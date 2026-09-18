@@ -1,0 +1,534 @@
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+@content-width: 1080px;
+
+// ── Hero ──────────────────────────────────────────────────────────────────
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: @space-16 @space-6 @space-12;
+  background: @gradient-hero;
+}
+
+.heroBadge {
+  padding: @space-1 @space-3;
+  border-radius: @radius-pill;
+  background: @color-primary-soft;
+  color: @color-accent;
+  font-size: @font-sm;
+  font-weight: 500;
+}
+
+.heroTitle {
+  max-width: 860px;
+  margin-top: @space-5;
+  font-size: @font-4xl;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -1px;
+}
+
+.heroBrand {
+  background: @gradient-primary;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.channelRow {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  margin-top: @space-6;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.channelChip {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  padding: @space-2 @space-4;
+  border-radius: @radius-pill;
+  background: @color-surface;
+  border: 1px solid @color-border;
+  box-shadow: @shadow-xs;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+.heroLead {
+  max-width: 720px;
+  margin-top: @space-6;
+  font-size: @font-lg;
+  color: @color-text-secondary;
+  line-height: 1.8;
+}
+
+.heroActions {
+  display: flex;
+  align-items: center;
+  gap: @space-5;
+  margin-top: @space-8;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ghostLink {
+  font-size: @font-md;
+  color: @color-text-secondary;
+
+  &:hover {
+    color: @color-accent;
+  }
+}
+
+// ── Hero 内的产品预览（纯样式还原）────────────────────────────────────────
+.previewWrapper {
+  width: 100%;
+  max-width: @content-width;
+  margin-top: @space-12;
+  perspective: 1400px;
+}
+
+.preview {
+  display: flex;
+  height: 320px;
+  overflow: hidden;
+  border-radius: @radius-xl;
+  border: 1px solid @color-border;
+  background: @color-surface;
+  box-shadow: @shadow-lg;
+  transform: rotateX(4deg);
+  transform-origin: top center;
+  text-align: left;
+}
+
+.previewSidebar {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  width: 168px;
+  flex: none;
+  padding: @space-4;
+  background: @color-sidebar;
+  border-right: 1px solid @color-border;
+}
+
+.previewBrand {
+  margin-bottom: @space-2;
+  font-weight: 700;
+  color: @color-accent;
+}
+
+.previewNavItem {
+  padding: @space-2 @space-3;
+  border-radius: @radius-xs;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+.previewNavItemActive {
+  background: @color-primary-soft;
+  color: @color-accent;
+  font-weight: 500;
+}
+
+.previewBody {
+  flex: 1;
+  min-width: 0;
+  padding: @space-5;
+  background: @color-surface;
+}
+
+.previewToolbar {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+  margin-bottom: @space-4;
+}
+
+.previewPill {
+  padding: @space-1 @space-3;
+  border-radius: @radius-pill;
+  background: @gradient-primary;
+  color: @color-text-inverse;
+  font-size: @font-xs;
+}
+
+.previewPillMuted {
+  padding: @space-1 @space-3;
+  border-radius: @radius-pill;
+  background: @color-surface-muted;
+  color: @color-text-secondary;
+  font-size: @font-xs;
+}
+
+.previewSearch {
+  flex: 1;
+  padding: @space-2 @space-3;
+  border-radius: @radius-sm;
+  border: 1px dashed @color-border-strong;
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.previewButton {
+  padding: @space-2 @space-3;
+  border-radius: @radius-sm;
+  background: @color-primary-soft;
+  color: @color-accent;
+  font-size: @font-xs;
+  font-weight: 500;
+}
+
+.previewRow {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  padding: @space-3;
+  border-bottom: 1px solid @color-border;
+  font-size: @font-sm;
+}
+
+.previewCellName {
+  flex: 1;
+  .text-ellipsis();
+}
+
+.previewCellMuted {
+  color: @color-text-tertiary;
+  font-size: @font-xs;
+}
+
+// ── 通用区块 ──────────────────────────────────────────────────────────────
+.section,
+.sectionAlt {
+  padding: @space-16 @space-6;
+}
+
+.sectionAlt {
+  background: @color-surface-muted;
+  border-top: 1px solid @color-border;
+  border-bottom: 1px solid @color-border;
+}
+
+.sectionHeader {
+  max-width: @content-width;
+  margin: 0 auto @space-10;
+  text-align: center;
+}
+
+.sectionEyebrow {
+  font-size: @font-sm;
+  font-weight: 500;
+  color: @color-accent;
+}
+
+.sectionTitle {
+  margin-top: @space-2;
+  font-size: @font-3xl;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.sectionLead {
+  max-width: 640px;
+  margin: @space-4 auto 0;
+  color: @color-text-secondary;
+  line-height: 1.8;
+}
+
+// ── 序列时间线 ────────────────────────────────────────────────────────────
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: @space-4;
+  max-width: @content-width;
+  margin: 0 auto;
+}
+
+.timelineItem {
+  position: relative;
+  padding: @space-4;
+  border-radius: @radius-md;
+  background: @color-surface;
+  border: 1px solid @color-border;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 26px;
+    right: -@space-4;
+    width: @space-4;
+    height: 1px;
+    background: @color-border-strong;
+  }
+
+  &:last-child::after {
+    display: none;
+  }
+}
+
+.timelineDay {
+  font-size: @font-xs;
+  color: @color-accent;
+  font-weight: 500;
+}
+
+.timelineTitle {
+  margin-top: @space-2;
+  font-size: @font-md;
+  font-weight: 600;
+}
+
+.timelineDetail {
+  margin-top: @space-2;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  line-height: 1.7;
+}
+
+.statRow {
+  display: flex;
+  justify-content: center;
+  gap: @space-12;
+  max-width: @content-width;
+  margin: @space-10 auto 0;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: @space-1;
+
+  strong {
+    font-size: @font-2xl;
+    font-weight: 700;
+    background: @gradient-primary;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  span {
+    font-size: @font-sm;
+    color: @color-text-secondary;
+  }
+}
+
+// ── 功能卡片 ──────────────────────────────────────────────────────────────
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: @space-5;
+  max-width: @content-width;
+  margin: 0 auto;
+}
+
+.featureCard {
+  padding: @space-6;
+  border-radius: @radius-lg;
+  background: @color-surface;
+  border: 1px solid @color-border;
+  .lift-on-hover();
+}
+
+.featureIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: @radius-md;
+  background: @color-primary-soft;
+  color: @color-accent;
+}
+
+.featureTitle {
+  margin-top: @space-4;
+  font-size: @font-lg;
+  font-weight: 600;
+}
+
+.featureSubtitle {
+  margin-top: @space-1;
+  font-size: @font-sm;
+  color: @color-accent;
+}
+
+.featureDetail {
+  margin-top: @space-3;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  line-height: 1.8;
+}
+
+// ── 客户反馈 ──────────────────────────────────────────────────────────────
+.testimonialGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: @space-5;
+  max-width: @content-width;
+  margin: 0 auto;
+}
+
+.testimonial {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+  margin: 0;
+  padding: @space-6;
+  border-radius: @radius-lg;
+  background: @color-surface;
+  border: 1px solid @color-border;
+
+  blockquote {
+    margin: 0;
+    font-size: @font-md;
+    line-height: 1.85;
+    color: @color-text-secondary;
+  }
+
+  figcaption {
+    display: flex;
+    flex-direction: column;
+
+    strong {
+      font-size: @font-md;
+    }
+
+    span {
+      font-size: @font-xs;
+      color: @color-text-tertiary;
+    }
+  }
+}
+
+.stars {
+  display: inline-flex;
+  gap: 2px;
+  color: #f59e0b;
+}
+
+// ── 定价 ──────────────────────────────────────────────────────────────────
+.planGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: @space-5;
+  max-width: @content-width;
+  margin: 0 auto;
+}
+
+.planCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+  padding: @space-6;
+  border-radius: @radius-lg;
+  background: @color-surface;
+  border: 1px solid @color-border;
+}
+
+.planCardHighlight {
+  border-color: @color-primary-border;
+  box-shadow: @shadow-md;
+}
+
+.planBadge {
+  position: absolute;
+  top: -@space-3;
+  right: @space-5;
+  padding: 2px @space-3;
+  border-radius: @radius-pill;
+  background: @gradient-primary;
+  color: @color-text-inverse;
+  font-size: @font-xs;
+}
+
+.planName {
+  font-size: @font-lg;
+  font-weight: 600;
+}
+
+.planPrice {
+  display: flex;
+  align-items: baseline;
+  gap: @space-1;
+
+  strong {
+    font-size: @font-3xl;
+    font-weight: 700;
+  }
+
+  span {
+    font-size: @font-sm;
+    color: @color-text-tertiary;
+  }
+}
+
+.planDescription {
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+.planFeatures {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  margin: @space-2 0 @space-3;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+
+  li {
+    padding-left: @space-5;
+    position: relative;
+
+    &::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: @color-success-text;
+      font-weight: 600;
+    }
+  }
+}
+
+// ── 响应式 ────────────────────────────────────────────────────────────────
+@media (max-width: 1024px) {
+  .timeline,
+  .featureGrid,
+  .testimonialGrid,
+  .planGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .timelineItem::after {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .heroTitle {
+    font-size: @font-2xl;
+  }
+
+  .timeline,
+  .featureGrid,
+  .testimonialGrid,
+  .planGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .previewSidebar {
+    display: none;
+  }
+}

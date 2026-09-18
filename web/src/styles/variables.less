@@ -1,0 +1,151 @@
+// 设计令牌与混入。本文件被 vite 注入到每个 less 文件，因此只能包含声明，不能产生任何样式输出。
+//
+// 主题规则：会随浅色/深色切换的令牌一律通过 var() 引用 theme.less 中的自定义属性；
+// 需要参与 less 颜色运算（fade/darken 等）或本身不受主题影响的品牌色、语义色保持字面量。
+
+// ── 品牌色 ────────────────────────────────────────────────────────────────
+// 实心填充（按钮底、渐变、标记块）沿用字面量，深色下仍配白字；
+// 当前景色使用时改用 @color-accent，它会随主题换成更亮的紫。
+@color-primary: #7c3aed;
+@color-primary-dark: #6d28d9;
+@color-primary-light: #a855f7;
+@color-primary-soft: var(--color-primary-soft);
+@color-primary-softer: var(--color-primary-softer);
+@color-primary-border: var(--color-primary-border);
+@color-accent: var(--color-accent);
+@color-accent-hover: var(--color-accent-hover);
+
+// ── 中性色 ────────────────────────────────────────────────────────────────
+@color-text: var(--color-text);
+@color-text-secondary: var(--color-text-secondary);
+@color-text-tertiary: var(--color-text-tertiary);
+@color-text-inverse: #ffffff;
+@color-border: var(--color-border);
+@color-border-strong: var(--color-border-strong);
+@color-surface: var(--color-surface);
+@color-surface-muted: var(--color-surface-muted);
+@color-sidebar: var(--color-sidebar);
+
+// ── 语义色 ────────────────────────────────────────────────────────────────
+// 同样区分实心底（字面量）与前景文字（随主题提亮）。
+@color-success: #12a150;
+@color-success-soft: var(--color-success-soft);
+@color-success-text: var(--color-success-text);
+@color-warning: #d97706;
+@color-warning-soft: var(--color-warning-soft);
+@color-warning-text: var(--color-warning-text);
+@color-danger: #dc2626;
+@color-danger-soft: var(--color-danger-soft);
+@color-danger-text: var(--color-danger-text);
+@color-info: #2563eb;
+@color-info-soft: var(--color-info-soft);
+@color-info-text: var(--color-info-text);
+
+// ── 渐变 ──────────────────────────────────────────────────────────────────
+@gradient-primary: linear-gradient(135deg, @color-primary-light 0%, @color-primary 100%);
+@gradient-hero: var(--gradient-hero);
+
+// ── 圆角 ──────────────────────────────────────────────────────────────────
+@radius-xs: 6px;
+@radius-sm: 8px;
+@radius-md: 12px;
+@radius-lg: 16px;
+@radius-xl: 22px;
+@radius-pill: 999px;
+
+// ── 阴影 ──────────────────────────────────────────────────────────────────
+@shadow-xs: var(--shadow-xs);
+@shadow-sm: var(--shadow-sm);
+@shadow-md: var(--shadow-md);
+@shadow-lg: var(--shadow-lg);
+
+// ── 半透明层 ──────────────────────────────────────────────────────────────
+@color-glass-strong: var(--color-glass-strong);
+@color-glass: var(--color-glass);
+@color-glass-faint: var(--color-glass-faint);
+@color-mask: var(--color-mask);
+
+// ── 开关 ──────────────────────────────────────────────────────────────────
+@color-switch-track: var(--color-switch-track);
+@color-switch-knob: var(--color-switch-knob);
+@shadow-knob: var(--shadow-knob);
+
+// ── 间距 ──────────────────────────────────────────────────────────────────
+@space-1: 4px;
+@space-2: 8px;
+@space-3: 12px;
+@space-4: 16px;
+@space-5: 20px;
+@space-6: 24px;
+@space-8: 32px;
+@space-10: 40px;
+@space-12: 48px;
+@space-16: 64px;
+
+// ── 字号 ──────────────────────────────────────────────────────────────────
+@font-xs: 12px;
+@font-sm: 13px;
+@font-md: 14px;
+@font-lg: 16px;
+@font-xl: 20px;
+@font-2xl: 24px;
+@font-3xl: 32px;
+@font-4xl: 44px;
+
+@font-family-base: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+  'Helvetica Neue', Arial, sans-serif;
+
+// ── 侧边栏 ────────────────────────────────────────────────────────────────
+@sidebar-width: 236px;
+@sidebar-width-collapsed: 68px;
+
+// ── 混入 ──────────────────────────────────────────────────────────────────
+
+// 单行省略
+.text-ellipsis() {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// 多行省略
+.text-clamp(@lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: @lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// 卡片容器
+.card-surface() {
+  background: @color-surface;
+  border: 1px solid @color-border;
+  border-radius: @radius-lg;
+}
+
+// 悬浮上浮
+.lift-on-hover() {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: @shadow-md;
+  }
+}
+
+// 细滚动条
+.thin-scrollbar() {
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: @color-border-strong;
+    border-radius: @radius-pill;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

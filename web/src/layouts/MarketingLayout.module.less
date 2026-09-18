@@ -1,0 +1,164 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: @color-surface;
+}
+
+// ── 吸顶导航 ──────────────────────────────────────────────────────────────
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 600;
+  background: @color-glass-strong;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid @color-border;
+}
+
+.headerInner {
+  display: flex;
+  align-items: center;
+  gap: @space-8;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: @space-3 @space-6;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  flex: none;
+}
+
+.brandMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: @radius-sm;
+  background: @gradient-primary;
+  color: @color-text-inverse;
+  font-weight: 700;
+  font-size: @font-lg;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+
+  strong {
+    font-size: @font-lg;
+    font-weight: 700;
+  }
+
+  small {
+    font-size: @font-xs;
+    color: @color-text-tertiary;
+  }
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: @space-5;
+  flex: 1;
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  padding: @space-2 0;
+  border: none;
+  background: transparent;
+  font-size: @font-md;
+  color: @color-text-secondary;
+  transition: color 0.14s ease;
+
+  &:hover {
+    color: @color-accent;
+  }
+}
+
+.navLinkOpen {
+  color: @color-accent;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  flex: none;
+}
+
+.locale {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  padding: 0 @space-2;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+// ── 内容 ──────────────────────────────────────────────────────────────────
+.main {
+  flex: 1;
+}
+
+// ── 页脚 ──────────────────────────────────────────────────────────────────
+.footer {
+  border-top: 1px solid @color-border;
+  background: @color-surface-muted;
+}
+
+.footerInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: @space-6;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: @space-8 @space-6;
+  flex-wrap: wrap;
+}
+
+.footerBrand {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+
+  strong {
+    font-size: @font-md;
+  }
+
+  p {
+    font-size: @font-sm;
+    color: @color-text-secondary;
+  }
+}
+
+.footerLinks {
+  display: flex;
+  align-items: center;
+  gap: @space-5;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+
+  a:hover {
+    color: @color-accent;
+  }
+}
+
+@media (max-width: 960px) {
+  .nav {
+    display: none;
+  }
+
+  .headerInner {
+    justify-content: space-between;
+  }
+}

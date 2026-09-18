@@ -1,0 +1,179 @@
+// 知识库列表页样式。
+
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: @space-8 @space-8 @space-16;
+  display: flex;
+  flex-direction: column;
+  gap: @space-8;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: @space-4;
+  padding-bottom: @space-5;
+  border-bottom: 1px solid @color-border;
+}
+
+.headerIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: @radius-md;
+  background: @color-primary-soft;
+  color: @color-accent;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  font-size: @font-xl;
+  font-weight: 700;
+}
+
+.subtitle {
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+}
+
+.header > :last-child {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: @space-12;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: @space-4;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  .card-surface();
+  .lift-on-hover();
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  padding: @space-5;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.cardHeading {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+}
+
+.cardName {
+  font-size: @font-md;
+  font-weight: 650;
+  color: @color-text;
+  .text-ellipsis();
+}
+
+.source {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  font-size: @font-xs;
+  color: @color-accent;
+}
+
+.cardMeta {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+
+  strong {
+    color: @color-text-secondary;
+  }
+}
+
+.dot {
+  color: @color-border-strong;
+}
+
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+  padding: @space-2 @space-4 @space-3;
+  border-top: 1px solid @color-border;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: @space-5;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+}
+
+.label {
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+.fieldHint {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.input {
+  width: 100%;
+  padding: 10px @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface;
+  font-size: @font-md;
+  outline: none;
+  transition: border-color 0.16s ease;
+
+  &:focus {
+    border-color: @color-primary-light;
+  }
+
+  &::placeholder {
+    color: @color-text-tertiary;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: @space-6 @space-4 @space-12;
+  }
+
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .header > :last-child {
+    margin-left: 0;
+    width: 100%;
+  }
+}

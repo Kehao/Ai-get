@@ -1,0 +1,187 @@
+// 用户中心样式。
+
+.page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: @space-8 @space-8 @space-16;
+  display: flex;
+  flex-direction: column;
+  gap: @space-8;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: @space-4;
+  padding-bottom: @space-5;
+  border-bottom: 1px solid @color-border;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: @gradient-primary;
+  color: @color-text-inverse;
+  font-size: @font-xl;
+  font-weight: 700;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  font-size: @font-xl;
+  font-weight: 700;
+}
+
+.subtitle {
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: @space-4;
+}
+
+.sectionTitle {
+  font-size: @font-lg;
+  font-weight: 650;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: @space-10;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: @space-3;
+  margin: 0;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: @space-1;
+  padding: @space-4 @space-5;
+  .card-surface();
+}
+
+.infoLabel {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.infoValue {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  margin: 0;
+  font-size: @font-md;
+  font-weight: 600;
+  color: @color-text;
+  word-break: break-all;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: @space-3;
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: @space-4 @space-5;
+  .card-surface();
+}
+
+.statLabel {
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+.statValue {
+  font-size: @font-2xl;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.5px;
+}
+
+.statCaption {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.shortcutGroup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: @space-3;
+}
+
+.shortcut {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  padding: @space-4 @space-5;
+  .card-surface();
+  .lift-on-hover();
+
+  &:hover {
+    border-color: @color-primary-border;
+  }
+}
+
+.shortcutIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: @radius-md;
+  background: @color-primary-softer;
+  color: @color-accent-hover;
+}
+
+.shortcutText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+
+  strong {
+    font-size: @font-md;
+    font-weight: 650;
+  }
+
+  small {
+    font-size: @font-xs;
+    color: @color-text-tertiary;
+  }
+}
+
+.shortcutArrow {
+  flex-shrink: 0;
+  color: @color-text-tertiary;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: @space-6 @space-4 @space-12;
+  }
+}

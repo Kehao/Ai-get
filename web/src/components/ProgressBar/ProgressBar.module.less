@@ -1,0 +1,43 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: @font-sm;
+}
+
+.label {
+  color: @color-text-secondary;
+}
+
+.value {
+  color: @color-text;
+  font-weight: 600;
+}
+
+.track {
+  width: 100%;
+  background: @color-primary-soft;
+  border-radius: @radius-pill;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: @radius-pill;
+  transition: width 0.4s ease;
+}
+
+.primary {
+  background: @gradient-primary;
+}
+
+.success {
+  background: linear-gradient(135deg, #34d399 0%, @color-success 100%);
+}

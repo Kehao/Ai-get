@@ -1,0 +1,190 @@
+// 使用文档页样式。
+
+.page {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: @space-10 @space-6 @space-16;
+  display: flex;
+  flex-direction: column;
+  gap: @space-10;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: @space-3;
+  text-align: center;
+  padding: @space-8 @space-6;
+  border-radius: @radius-xl;
+  background: @gradient-hero;
+  border: 1px solid @color-border;
+}
+
+.heroIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: @radius-md;
+  background: @color-primary-soft;
+  color: @color-accent;
+}
+
+.title {
+  font-size: @font-3xl;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.subtitle {
+  max-width: 560px;
+  color: @color-text-secondary;
+  line-height: 1.8;
+}
+
+.hero > :last-child {
+  margin-top: @space-2;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: @space-10;
+  align-items: start;
+}
+
+.toc {
+  display: flex;
+  flex-direction: column;
+  gap: @space-1;
+  position: sticky;
+  top: @space-6;
+  padding-left: @space-4;
+  border-left: 2px solid @color-border;
+}
+
+.tocTitle {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+  margin-bottom: @space-2;
+}
+
+.tocLink {
+  padding: @space-1 0;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  transition: color 0.16s ease;
+
+  &:hover {
+    color: @color-accent;
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: @space-10;
+  min-width: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+  scroll-margin-top: @space-8;
+}
+
+.sectionTitle {
+  font-size: @font-xl;
+  font-weight: 700;
+}
+
+.sectionSummary {
+  font-size: @font-md;
+  color: @color-text-secondary;
+  line-height: 1.8;
+}
+
+.stepList {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+  margin-top: @space-2;
+}
+
+.step {
+  display: flex;
+  gap: @space-4;
+  padding: @space-4 @space-5;
+  .card-surface();
+}
+
+.stepIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: @radius-pill;
+  background: @color-primary-soft;
+  color: @color-accent-hover;
+  font-size: @font-xs;
+  font-weight: 600;
+}
+
+.stepBody {
+  display: flex;
+  flex-direction: column;
+  gap: @space-1;
+  min-width: 0;
+}
+
+.stepTitle {
+  font-size: @font-md;
+  font-weight: 650;
+}
+
+.stepDetail {
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  line-height: 1.8;
+}
+
+.footer {
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+  line-height: 1.9;
+}
+
+.link {
+  color: @color-accent;
+
+  &:hover {
+    color: @color-accent-hover;
+  }
+}
+
+@media (max-width: 900px) {
+  .body {
+    grid-template-columns: 1fr;
+    gap: @space-6;
+  }
+
+  .toc {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: @space-3;
+    padding-left: 0;
+    padding-bottom: @space-3;
+    border-left: none;
+    border-bottom: 1px solid @color-border;
+  }
+
+  .tocTitle {
+    display: none;
+  }
+}

@@ -1,0 +1,94 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: @space-2;
+  border: 1px solid transparent;
+  border-radius: @radius-sm;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease,
+    opacity 0.16s ease;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+// ── 尺寸 ──────────────────────────────────────────────────────────────────
+.sm {
+  height: 30px;
+  padding: 0 @space-3;
+  font-size: @font-sm;
+}
+
+.md {
+  height: 36px;
+  padding: 0 @space-4;
+  font-size: @font-md;
+}
+
+.lg {
+  height: 44px;
+  padding: 0 @space-5;
+  font-size: @font-lg;
+}
+
+.block {
+  width: 100%;
+}
+
+// ── 变体 ──────────────────────────────────────────────────────────────────
+.primary {
+  background: @color-primary;
+  color: @color-text-inverse;
+
+  &:hover:not(:disabled) {
+    background: @color-primary-dark;
+  }
+}
+
+.gradient {
+  background: @gradient-primary;
+  color: @color-text-inverse;
+  box-shadow: 0 6px 18px fade(@color-primary, 26%);
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 10px 24px fade(@color-primary, 34%);
+  }
+}
+
+.outline {
+  background: @color-surface;
+  border-color: @color-border-strong;
+  color: @color-text;
+
+  &:hover:not(:disabled) {
+    border-color: @color-primary-border;
+    color: @color-accent;
+    background: @color-primary-softer;
+  }
+}
+
+.ghost {
+  background: transparent;
+  color: @color-text-secondary;
+
+  &:hover:not(:disabled) {
+    background: @color-surface-muted;
+    color: @color-text;
+  }
+}
+
+.text {
+  height: auto;
+  padding: 0;
+  background: transparent;
+  color: @color-accent;
+  font-weight: 500;
+
+  &:hover:not(:disabled) {
+    color: @color-accent-hover;
+  }
+}

@@ -1,0 +1,188 @@
+// 知识库详情页样式。
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: @space-8 @space-8 @space-16;
+  display: flex;
+  flex-direction: column;
+  gap: @space-6;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: @space-3;
+  height: 60vh;
+  color: @color-text-tertiary;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: @space-4;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+
+  &:hover {
+    color: @color-accent;
+  }
+}
+
+.title {
+  font-size: @font-2xl;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.headerMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: @space-4;
+}
+
+.source {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  font-size: @font-xs;
+  color: @color-accent;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.metaText {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+
+  strong {
+    color: @color-text-secondary;
+    font-size: @font-sm;
+  }
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: @space-4;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: @space-4;
+}
+
+.sectionTitle {
+  font-size: @font-lg;
+  font-weight: 650;
+}
+
+.search {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  padding: 0 @space-3;
+  height: 34px;
+  min-width: 220px;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface;
+  color: @color-text-tertiary;
+  transition: border-color 0.16s ease;
+
+  &:focus-within {
+    border-color: @color-primary-light;
+  }
+}
+
+.searchInput {
+  flex: 1;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: @font-sm;
+
+  &::placeholder {
+    color: @color-text-tertiary;
+  }
+}
+
+.entryList {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+}
+
+.entry {
+  display: flex;
+  gap: @space-4;
+  padding: @space-5;
+  .card-surface();
+}
+
+.entryIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: @radius-pill;
+  background: @color-primary-soft;
+  color: @color-accent-hover;
+  font-size: @font-xs;
+  font-weight: 600;
+}
+
+.entryBody {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  min-width: 0;
+}
+
+.entryQuestion {
+  font-size: @font-md;
+  font-weight: 650;
+}
+
+.entryAnswer {
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  line-height: 1.8;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: @space-6 @space-4 @space-12;
+  }
+
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .search {
+    width: 100%;
+  }
+}

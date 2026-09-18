@@ -1,0 +1,39 @@
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+.total {
+  margin-right: @space-2;
+}
+
+.nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid @color-border;
+  border-radius: @radius-xs;
+  background: @color-surface;
+  color: @color-text-secondary;
+
+  &:hover:not(:disabled) {
+    border-color: @color-primary-border;
+    color: @color-accent;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.indicator {
+  min-width: 46px;
+  text-align: center;
+  color: @color-text;
+}

@@ -1,0 +1,430 @@
+// 商机洞察页样式。
+
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: @space-6 @space-8 @space-16;
+  display: flex;
+  flex-direction: column;
+  gap: @space-5;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: @space-3;
+  height: 60vh;
+  color: @color-text-tertiary;
+}
+
+// ── 顶部状态栏 ────────────────────────────────────────────────────────────
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: @space-4;
+  flex-wrap: wrap;
+}
+
+.topInfo {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+}
+
+.topIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: @radius-md;
+  background: @color-primary-soft;
+  color: @color-accent;
+}
+
+.topText {
+  display: flex;
+  flex-direction: column;
+}
+
+.topTitle {
+  font-size: @font-lg;
+  font-weight: 650;
+}
+
+.topSubtitle {
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+}
+
+.agentButton {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  height: 36px;
+  padding: 0 @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  transition: border-color 0.16s ease;
+
+  &:hover,
+  &.agentButtonOpen {
+    border-color: @color-primary-light;
+    color: @color-text;
+  }
+}
+
+// ── KPI ──────────────────────────────────────────────────────────────────
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: @space-4;
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: @space-1;
+  padding: @space-5;
+  .card-surface();
+}
+
+.kpiLabel {
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+.kpiValue {
+  font-size: @font-3xl;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -1px;
+}
+
+.kpiCaption {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+// ── 图表与动态 ────────────────────────────────────────────────────────────
+
+.insightRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: @space-4;
+  align-items: start;
+}
+
+.chartCard,
+.activityCard {
+  padding: @space-5;
+  .card-surface();
+}
+
+.cardHeader {
+  margin-bottom: @space-4;
+}
+
+.cardTitle {
+  font-size: @font-md;
+  font-weight: 650;
+}
+
+.cardSubtitle {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.activityEmpty {
+  padding: @space-6 0;
+  text-align: center;
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: @space-4;
+}
+
+.activityItem {
+  display: flex;
+  gap: @space-3;
+}
+
+.activityDot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: @color-primary-light;
+}
+
+.activityBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.activityTitle {
+  font-size: @font-sm;
+  font-weight: 600;
+}
+
+.activityDetail {
+  font-size: @font-xs;
+  color: @color-text-secondary;
+  line-height: 1.7;
+}
+
+.activityTime {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+// ── 商机列表 ──────────────────────────────────────────────────────────────
+
+.listSection {
+  display: flex;
+  flex-direction: column;
+  gap: @space-4;
+  padding: @space-6;
+  .card-surface();
+}
+
+.listHeader {
+  display: flex;
+  flex-direction: column;
+  gap: @space-1;
+}
+
+.listHeading {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+}
+
+.listTitle {
+  font-size: @font-xl;
+  font-weight: 700;
+}
+
+.listSubtitle {
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+}
+
+.listToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: @space-4;
+  flex-wrap: wrap;
+  padding-bottom: @space-4;
+  border-bottom: 1px solid @color-border;
+}
+
+.analyzed {
+  font-size: @font-sm;
+  color: @color-text-secondary;
+
+  strong {
+    color: @color-accent;
+  }
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: @space-2;
+}
+
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  padding: 6px 14px;
+  border: 1px solid @color-border;
+  border-radius: @radius-pill;
+  background: @color-surface;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+
+  strong {
+    font-weight: 600;
+    color: @color-text-tertiary;
+  }
+
+  &:hover {
+    border-color: @color-primary-light;
+  }
+}
+
+.filterActive {
+  border-color: @color-primary;
+  background: @color-primary-soft;
+  color: @color-accent-hover;
+
+  strong {
+    color: @color-accent-hover;
+  }
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  .thin-scrollbar();
+}
+
+.table {
+  width: 100%;
+  min-width: 960px;
+  font-size: @font-sm;
+
+  th {
+    padding: @space-3 @space-3;
+    text-align: left;
+    font-size: @font-xs;
+    font-weight: 600;
+    color: @color-text-tertiary;
+    border-bottom: 1px solid @color-border;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: @space-4 @space-3;
+    vertical-align: top;
+    border-bottom: 1px solid @color-border;
+    color: @color-text-secondary;
+  }
+}
+
+.colCompany {
+  min-width: 220px;
+}
+.colSignal {
+  min-width: 150px;
+}
+.colConclusion {
+  min-width: 260px;
+}
+.colAgent {
+  min-width: 120px;
+}
+.colChannel {
+  min-width: 90px;
+}
+.colTime {
+  min-width: 110px;
+}
+
+.row:hover td {
+  background: @color-surface-muted;
+}
+
+.companyCell {
+  display: flex;
+  align-items: flex-start;
+  gap: @space-3;
+}
+
+.contactAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: @color-primary-softer;
+  color: @color-accent-hover;
+  font-size: @font-xs;
+  font-weight: 600;
+}
+
+.companyText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  strong {
+    color: @color-text;
+    font-weight: 600;
+  }
+
+  span {
+    font-size: @font-xs;
+    color: @color-text-tertiary;
+  }
+}
+
+.signal {
+  color: @color-text;
+}
+
+.conclusionCell {
+  display: flex;
+  flex-direction: column;
+  gap: @space-1;
+  align-items: flex-start;
+}
+
+.conclusionText {
+  font-size: @font-xs;
+  color: @color-text-secondary;
+  line-height: 1.7;
+}
+
+.timeCell {
+  white-space: nowrap;
+  color: @color-text-tertiary;
+}
+
+.listFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: @space-2;
+}
+
+.footnote {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+@media (max-width: 1080px) {
+  .insightRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: @space-4 @space-4 @space-12;
+  }
+
+  .topActions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

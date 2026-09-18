@@ -1,0 +1,277 @@
+// 关联账号页样式。
+
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: @space-8 @space-8 @space-16;
+  display: flex;
+  flex-direction: column;
+  gap: @space-8;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: @space-3;
+  height: 60vh;
+  color: @color-text-tertiary;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: @space-4;
+  padding-bottom: @space-5;
+  border-bottom: 1px solid @color-border;
+}
+
+.headerIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: @radius-md;
+  background: @color-primary-soft;
+  color: @color-accent;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-size: @font-xl;
+  font-weight: 700;
+}
+
+.subtitle {
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+}
+
+.plan {
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: @radius-pill;
+  background: @color-surface-muted;
+  border: 1px solid @color-border;
+  font-size: @font-xs;
+  color: @color-text-secondary;
+}
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: @space-4;
+}
+
+.summaryCard {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  padding: @space-4 @space-5;
+  .card-surface();
+}
+
+.summaryIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: @radius-sm;
+  background: @color-primary-softer;
+  color: @color-accent;
+}
+
+.summaryTitle {
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  font-weight: 500;
+}
+
+.summaryValue {
+  font-size: @font-lg;
+  font-weight: 650;
+}
+
+.summaryCard > :last-child {
+  margin-left: auto;
+}
+
+.hint {
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+  padding: @space-3 @space-4;
+  border-radius: @radius-sm;
+  background: @color-surface-muted;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: @space-8;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: @space-4;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+}
+
+.groupTitle {
+  font-size: @font-lg;
+  font-weight: 650;
+}
+
+.groupCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: @radius-pill;
+  background: @color-surface-muted;
+  border: 1px solid @color-border;
+  font-size: @font-xs;
+  color: @color-text-secondary;
+}
+
+.channelList {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+}
+
+.channelCard {
+  display: flex;
+  align-items: center;
+  gap: @space-4;
+  padding: @space-4 @space-5;
+  .card-surface();
+}
+
+.channelIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: @radius-md;
+  background: @color-primary-softer;
+  color: @color-accent-hover;
+}
+
+.channelBody {
+  display: flex;
+  flex-direction: column;
+  gap: @space-1;
+  min-width: 0;
+  flex: 1;
+}
+
+.channelHeading {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+}
+
+.channelName {
+  font-size: @font-md;
+  font-weight: 650;
+}
+
+.channelDescription {
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+}
+
+.channelAccount {
+  font-size: @font-xs;
+  color: @color-success-text;
+}
+
+.channelAction {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  flex-shrink: 0;
+}
+
+.lockNote {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+}
+
+.label {
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+.fieldHint {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.input {
+  width: 100%;
+  padding: 10px @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface;
+  font-size: @font-md;
+  outline: none;
+  transition: border-color 0.16s ease;
+
+  &:focus {
+    border-color: @color-primary-light;
+  }
+
+  &::placeholder {
+    color: @color-text-tertiary;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: @space-6 @space-4 @space-12;
+  }
+
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .plan {
+    margin-left: 0;
+  }
+
+  .channelCard {
+    flex-wrap: wrap;
+  }
+
+  .channelAction {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

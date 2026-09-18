@@ -1,0 +1,106 @@
+// 主题调色板。本文件只允许出现自定义属性声明，且必须由 global.less 引入一次。
+// 运行时主题切换依赖这里的 :root / [data-theme='dark'] 两组取值；
+// variables.less 中的语义令牌通过 var() 引用它们，因此组件样式无需感知主题。
+
+:root {
+  color-scheme: light;
+
+  // ── 文字 ────────────────────────────────────────────────────────────────
+  --color-text: #1e1b2e;
+  --color-text-secondary: #635f78;
+  --color-text-tertiary: #9c98ad;
+
+  // ── 描边与表面 ──────────────────────────────────────────────────────────
+  --color-border: #ebe8f2;
+  --color-border-strong: #ded9ea;
+  --color-surface: #ffffff;
+  --color-surface-muted: #faf9fc;
+  --color-sidebar: #faf8fe;
+
+  // ── 品牌浅色底 ──────────────────────────────────────────────────────────
+  --color-primary-soft: #f3edfe;
+  --color-primary-softer: #faf7ff;
+  --color-primary-border: #e4d7fd;
+
+  // ── 强调色（当前景色使用，需与背景保持足够对比度） ──────────────────────
+  // 与 @color-primary 分开：品牌紫可以当实心底配白字，却不足以当深色背景上的文字。
+  --color-accent: #7c3aed;
+  --color-accent-hover: #6d28d9;
+
+  // ── 语义色（当前景色使用） ──────────────────────────────────────────────
+  --color-success-text: #12a150;
+  --color-warning-text: #d97706;
+  --color-danger-text: #dc2626;
+  --color-info-text: #2563eb;
+
+  // ── 语义浅色底 ──────────────────────────────────────────────────────────
+  --color-success-soft: #e8f7ee;
+  --color-warning-soft: #fef4e6;
+  --color-danger-soft: #fdecec;
+  --color-info-soft: #eaf1fe;
+
+  // ── 渐变与阴影 ──────────────────────────────────────────────────────────
+  --gradient-hero: radial-gradient(120% 120% at 50% 0%, #f6efff 0%, #ffffff 62%);
+  --shadow-xs: 0 1px 2px rgba(30, 27, 46, 0.05);
+  --shadow-sm: 0 2px 8px rgba(30, 27, 46, 0.06);
+  --shadow-md: 0 8px 24px rgba(30, 27, 46, 0.08);
+  --shadow-lg: 0 18px 48px rgba(76, 29, 149, 0.14);
+
+  // ── 半透明层：按不透明度分三档（strong 最实、faint 最透） ────────────────
+  --color-glass-strong: rgba(255, 255, 255, 0.86);
+  --color-glass: rgba(255, 255, 255, 0.7);
+  --color-glass-faint: rgba(255, 255, 255, 0.6);
+  --color-mask: rgba(30, 27, 46, 0.32);
+
+  // ── 开关 —— 关闭态没有品牌色撑场，靠轨道与圆点自身的明暗差辨认 ──────────
+  --color-switch-track: #e9e7f0;
+  --color-switch-knob: #ffffff;
+  --shadow-knob: 0 1px 3px rgba(30, 27, 46, 0.28);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-text: #eae7f2;
+  --color-text-secondary: #a8a2bd;
+  --color-text-tertiary: #7b7590;
+
+  --color-border: #2e2a3d;
+  --color-border-strong: #3c3750;
+  --color-surface: #1a1725;
+  --color-surface-muted: #221d2f;
+  --color-sidebar: #16131f;
+
+  --color-primary-soft: #2b2143;
+  --color-primary-softer: #221b34;
+  --color-primary-border: #3d2e60;
+
+  // 深色底上改用更亮的紫，保证正文级对比度（浅色档 #7c3aed 在此只有约 2.6:1）。
+  --color-accent: #a78bfa;
+  --color-accent-hover: #c4b5fd;
+
+  --color-success-text: #4ade80;
+  --color-warning-text: #fbbf24;
+  --color-danger-text: #f87171;
+  --color-info-text: #60a5fa;
+
+  --color-success-soft: #17281e;
+  --color-warning-soft: #2c2115;
+  --color-danger-soft: #2e1a1c;
+  --color-info-soft: #17202f;
+
+  --gradient-hero: radial-gradient(120% 120% at 50% 0%, #241b3c 0%, #131019 62%);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.6);
+
+  --color-glass-strong: rgba(26, 23, 37, 0.86);
+  --color-glass: rgba(26, 23, 37, 0.72);
+  --color-glass-faint: rgba(26, 23, 37, 0.6);
+  --color-mask: rgba(0, 0, 0, 0.6);
+
+  --color-switch-track: #2e2a3d;
+  --color-switch-knob: #a8a2bd;
+  --shadow-knob: 0 1px 3px rgba(0, 0, 0, 0.55);
+}

@@ -1,0 +1,216 @@
+.shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: @color-surface;
+}
+
+// ── 侧边栏 ────────────────────────────────────────────────────────────────
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: @sidebar-width;
+  height: 100%;
+  background: @color-sidebar;
+  border-right: 1px solid @color-border;
+  transition: width 0.18s ease;
+
+  .collapsed & {
+    width: @sidebar-width-collapsed;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: @space-2;
+  padding: @space-4 @space-4 @space-3;
+}
+
+.brandLink {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  min-width: 0;
+}
+
+.brandMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: @radius-sm;
+  background: @gradient-primary;
+  color: @color-text-inverse;
+  font-weight: 700;
+  font-size: @font-lg;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  strong {
+    font-size: @font-lg;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    color: @color-text;
+  }
+
+  small {
+    font-size: @font-xs;
+    color: @color-text-tertiary;
+  }
+}
+
+.collapseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: none;
+  border-radius: @radius-xs;
+  background: transparent;
+  color: @color-text-tertiary;
+
+  &:hover {
+    background: @color-primary-soft;
+    color: @color-accent;
+  }
+}
+
+.navScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: @space-2 @space-3;
+  .thin-scrollbar();
+}
+
+.groupLabel {
+  margin: @space-2 0 @space-2 @space-2;
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  width: 100%;
+  padding: @space-3;
+  border: none;
+  border-radius: @radius-sm;
+  background: transparent;
+  color: @color-text-secondary;
+  font-size: @font-md;
+  text-align: left;
+  transition: background 0.14s ease, color 0.14s ease;
+
+  &:hover {
+    background: @color-primary-softer;
+    color: @color-text;
+  }
+}
+
+.navItemActive {
+  background: @color-primary-soft;
+  color: @color-accent;
+  font-weight: 500;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: -@space-3;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 18px;
+    border-radius: 0 @radius-pill @radius-pill 0;
+    background: @color-primary;
+  }
+}
+
+.navIcon {
+  flex: none;
+}
+
+.navLabel {
+  flex: 1;
+  .text-ellipsis();
+}
+
+.subNav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 @space-2 @space-6;
+  padding-left: @space-3;
+  border-left: 1px solid @color-border;
+}
+
+.subNavItem {
+  padding: @space-2 @space-2;
+  border-radius: @radius-xs;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+
+  &:hover {
+    background: @color-primary-softer;
+    color: @color-text;
+  }
+}
+
+.subNavItemActive {
+  background: @color-primary-soft;
+  color: @color-accent;
+  font-weight: 500;
+}
+
+// ── 底部：套餐与账号 ──────────────────────────────────────────────────────
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  padding: @space-3;
+  border-top: 1px solid @color-border;
+}
+
+.planBadge {
+  align-self: flex-start;
+  padding: 2px @space-2;
+  border-radius: @radius-xs;
+  background: @color-surface;
+  border: 1px solid @color-border;
+  font-size: @font-xs;
+  color: @color-text-secondary;
+}
+
+// ── 内容区 ────────────────────────────────────────────────────────────────
+.content {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  background: @color-surface;
+  .thin-scrollbar();
+}

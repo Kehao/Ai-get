@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ai-get · AI 智能获客平台</title>
+    <meta name="description" content="Ai-get 是 AI B2B 销售智能体：发现匹配客户、完成企业调研，并执行多渠道触达。" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // 在样式生效前落定主题，避免深色偏好下先闪一帧浅色。
+      (function () {
+        try {
+          var stored = window.localStorage.getItem('ai-get.theme');
+          var dark =
+            stored === 'dark' ||
+            (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        } catch (error) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

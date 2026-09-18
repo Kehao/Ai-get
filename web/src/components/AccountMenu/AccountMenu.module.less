@@ -1,0 +1,277 @@
+// 账户菜单样式。与 Dropdown 分离：这里有分组卡片、开关行与嵌套列表，结构不同。
+
+.container {
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  width: 100%;
+  padding: @space-2 @space-3;
+  border: 1px solid transparent;
+  border-radius: @radius-md;
+  background: transparent;
+  text-align: left;
+  transition: background 0.16s ease, border-color 0.16s ease;
+
+  &:hover,
+  &.triggerOpen {
+    background: @color-surface;
+    border-color: @color-border;
+  }
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: @gradient-primary;
+  color: @color-text-inverse;
+  font-size: @font-md;
+  font-weight: 700;
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.email {
+  font-size: @font-sm;
+  font-weight: 600;
+  color: @color-text;
+  .text-ellipsis();
+}
+
+.plan {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: @color-text-tertiary;
+  transition: transform 0.16s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.panel {
+  position: absolute;
+  bottom: calc(100% + @space-2);
+  left: 0;
+  right: 0;
+  z-index: 900;
+  min-width: 260px;
+  padding: @space-2;
+  background: @color-surface;
+  border: 1px solid @color-border;
+  border-radius: @radius-lg;
+  box-shadow: @shadow-lg;
+  animation: panel-in 0.16s ease;
+}
+
+// 收起态下触发器只有 32px 宽，面板改为向右展开
+.panelFloating {
+  left: 0;
+  right: auto;
+  width: 268px;
+}
+
+.panelHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: @space-3 @space-3 @space-3;
+}
+
+.panelEmail {
+  font-size: @font-md;
+  font-weight: 650;
+  color: @color-text;
+  .text-ellipsis();
+}
+
+.panelCaption {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.switchGroup {
+  display: flex;
+  flex-direction: column;
+  padding: @space-1 0 @space-2;
+  border-top: 1px solid @color-border;
+  border-bottom: 1px solid @color-border;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: @space-3;
+  padding: @space-2 @space-3;
+  border-radius: @radius-sm;
+
+  &:hover {
+    background: @color-surface-muted;
+  }
+}
+
+.switchLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-3;
+  font-size: @font-sm;
+  color: @color-text;
+}
+
+.switchIcon {
+  color: @color-text-tertiary;
+}
+
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface;
+  color: @color-text-secondary;
+  transition: border-color 0.16s ease, color 0.16s ease;
+
+  &:hover {
+    border-color: @color-primary-border;
+    color: @color-accent;
+  }
+}
+
+.languageButton {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  padding: 5px @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-pill;
+  background: @color-surface;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  transition: border-color 0.16s ease, color 0.16s ease;
+
+  &:hover {
+    border-color: @color-primary-border;
+    color: @color-text;
+  }
+}
+
+.languageList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 @space-2 @space-1;
+  padding: @space-1;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface-muted;
+}
+
+.languageOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: @space-3;
+  padding: @space-2 @space-3;
+  border: none;
+  border-radius: @radius-xs;
+  background: transparent;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  text-align: left;
+
+  &:hover {
+    background: @color-surface;
+    color: @color-text;
+  }
+}
+
+.languageLabel {
+  .text-ellipsis();
+}
+
+.check {
+  color: @color-accent;
+  flex-shrink: 0;
+}
+
+.linkGroup {
+  display: flex;
+  flex-direction: column;
+  padding: @space-2 0;
+  border-bottom: 1px solid @color-border;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  padding: @space-2 @space-3;
+  border-radius: @radius-sm;
+  font-size: @font-sm;
+  color: @color-text;
+
+  &:hover {
+    background: @color-surface-muted;
+  }
+}
+
+.linkArrow {
+  margin-left: auto;
+  color: @color-text-tertiary;
+}
+
+.signOutGroup {
+  padding-top: @space-2;
+}
+
+.signOut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: @space-3;
+  width: 100%;
+  padding: @space-2 @space-3;
+  border: none;
+  border-radius: @radius-sm;
+  background: transparent;
+  font-size: @font-sm;
+  color: @color-danger-text;
+  text-align: left;
+
+  &:hover {
+    background: @color-danger-soft;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

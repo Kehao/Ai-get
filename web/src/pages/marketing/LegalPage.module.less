@@ -1,0 +1,107 @@
+// 法务类静态页面样式。
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: @space-12 @space-6 @space-16;
+  display: flex;
+  flex-direction: column;
+  gap: @space-8;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  padding-bottom: @space-5;
+  border-bottom: 1px solid @color-border;
+}
+
+.title {
+  font-size: @font-3xl;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.updatedAt {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.intro {
+  margin-top: @space-2;
+  color: @color-text-secondary;
+  line-height: 1.9;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: @space-8;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  font-size: @font-lg;
+  font-weight: 650;
+}
+
+.index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: @radius-pill;
+  background: @color-primary-soft;
+  color: @color-accent-hover;
+  font-size: @font-xs;
+  font-weight: 600;
+}
+
+.paragraph {
+  font-size: @font-md;
+  color: @color-text-secondary;
+  line-height: 1.9;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+
+  li {
+    position: relative;
+    padding-left: @space-5;
+    font-size: @font-md;
+    color: @color-text-secondary;
+    line-height: 1.9;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 12px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: @color-primary-light;
+    }
+  }
+}
+
+.footer {
+  padding-top: @space-5;
+  border-top: 1px solid @color-border;
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+}

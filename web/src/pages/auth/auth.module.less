@@ -1,0 +1,186 @@
+// 登录与注册页共用样式。两页结构一致，样式集中在这里维护。
+
+.page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: @space-10 @space-6;
+  background: @gradient-hero;
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: @space-4;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  margin-bottom: @space-2;
+}
+
+.brandMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: @radius-sm;
+  background: @gradient-primary;
+  color: @color-text-inverse;
+  font-weight: 700;
+  font-size: @font-lg;
+}
+
+.brandName {
+  font-size: @font-xl;
+  font-weight: 700;
+}
+
+.title {
+  font-size: @font-3xl;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.subtitle {
+  margin-top: -@space-3;
+  color: @color-text-secondary;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  color: @color-text-tertiary;
+  font-size: @font-sm;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: @color-border;
+  }
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: @space-4;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  font-size: @font-sm;
+  font-weight: 500;
+  color: @color-text;
+}
+
+.input {
+  width: 100%;
+  height: 42px;
+  padding: 0 @space-4;
+  border: 1px solid @color-border-strong;
+  border-radius: @radius-sm;
+  background: @color-surface;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+
+  &::placeholder {
+    color: @color-text-tertiary;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: @color-primary;
+    box-shadow: 0 0 0 3px fade(@color-primary, 14%);
+  }
+}
+
+.passwordWrapper {
+  position: relative;
+  display: block;
+
+  .input {
+    padding-right: 42px;
+  }
+}
+
+.togglePassword {
+  position: absolute;
+  right: @space-2;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: @radius-xs;
+  background: transparent;
+  color: @color-text-tertiary;
+
+  &:hover {
+    color: @color-text;
+    background: @color-surface-muted;
+  }
+}
+
+.link {
+  color: @color-accent;
+
+  &:hover {
+    color: @color-accent-hover;
+  }
+}
+
+.footer {
+  text-align: center;
+  font-size: @font-md;
+  color: @color-text-secondary;
+}
+
+.notice {
+  text-align: center;
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+  line-height: 1.7;
+}
+
+.demoHint {
+  padding: @space-2 @space-3;
+  border-radius: @radius-sm;
+  background: @color-primary-softer;
+  border: 1px dashed @color-primary-border;
+  text-align: center;
+  font-size: @font-xs;
+  color: @color-text-secondary;
+}
+
+// 注册页：邮箱格式提示
+.hint {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.hintError {
+  font-size: @font-xs;
+  color: @color-danger-text;
+}

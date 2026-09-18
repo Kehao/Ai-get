@@ -1,0 +1,577 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: @space-3;
+  height: 100%;
+  color: @color-text-secondary;
+
+  a {
+    color: @color-accent;
+  }
+}
+
+// ── 工具栏 ────────────────────────────────────────────────────────────────
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: @space-4;
+  padding: @space-4 @space-5;
+  border-bottom: 1px solid @color-border;
+  background: @color-surface;
+  flex-wrap: wrap;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: @radius-sm;
+  border: 1px solid @color-border;
+  color: @color-text-secondary;
+
+  &:hover {
+    border-color: @color-primary-border;
+    color: @color-accent;
+  }
+}
+
+.toolbarTitle {
+  display: flex;
+  flex-direction: column;
+  gap: @space-1;
+  min-width: 240px;
+  flex: 1;
+}
+
+.toolbarQuery {
+  font-size: @font-md;
+  font-weight: 500;
+  color: @color-text;
+  .text-ellipsis();
+}
+
+.toolbarMeta {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  font-size: @font-xs;
+  color: @color-text-secondary;
+  flex-wrap: wrap;
+}
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+  flex: none;
+  flex-wrap: wrap;
+}
+
+.toolButton {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+  height: 32px;
+  padding: 0 @space-3;
+  border-radius: @radius-sm;
+  border: 1px solid @color-border;
+  background: @color-surface;
+  color: @color-text-secondary;
+  font-size: @font-sm;
+
+  &:hover {
+    border-color: @color-primary-border;
+    color: @color-accent;
+  }
+}
+
+.toolButtonOpen {
+  border-color: @color-primary-border;
+  color: @color-accent;
+  background: @color-primary-softer;
+}
+
+// ── 主体 ──────────────────────────────────────────────────────────────────
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.tableArea {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.tableScroll {
+  flex: 1;
+  overflow: auto;
+  .thin-scrollbar();
+}
+
+.table {
+  width: 100%;
+  min-width: 1320px;
+  font-size: @font-sm;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: @space-3;
+    background: @color-surface-muted;
+    border-bottom: 1px solid @color-border;
+    text-align: left;
+    font-weight: 500;
+    color: @color-text-secondary;
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: @space-3;
+    border-bottom: 1px solid @color-border;
+    vertical-align: top;
+  }
+
+  tbody tr:hover {
+    background: @color-primary-softer;
+  }
+}
+
+.checkCell {
+  width: 40px;
+  text-align: center;
+}
+
+.summaryCell {
+  min-width: 320px;
+  max-width: 420px;
+}
+
+.actionCell {
+  width: 140px;
+}
+
+.companyCell {
+  display: flex;
+  align-items: flex-start;
+  gap: @space-2;
+  min-width: 200px;
+}
+
+.companyMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: @radius-xs;
+  background: @color-primary-soft;
+  color: @color-accent;
+  font-size: @font-xs;
+  font-weight: 600;
+}
+
+.companyText {
+  display: flex;
+  flex-direction: column;
+
+  strong {
+    font-size: @font-sm;
+    font-weight: 500;
+    color: @color-text;
+  }
+
+  small {
+    font-size: @font-xs;
+    color: @color-text-tertiary;
+  }
+}
+
+.website {
+  color: @color-accent;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.industryList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: @space-1;
+  min-width: 140px;
+}
+
+.summaryText {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: @color-text-secondary;
+  line-height: 1.7;
+}
+
+.retryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  padding: @space-1 @space-2;
+  border-radius: @radius-xs;
+  border: 1px dashed @color-border-strong;
+  background: transparent;
+  color: @color-text-tertiary;
+  font-size: @font-xs;
+
+  &:hover {
+    border-color: @color-primary-border;
+    color: @color-accent;
+  }
+}
+
+.contactButton {
+  padding: @space-1 @space-3;
+  border-radius: @radius-pill;
+  border: 1px solid @color-primary-border;
+  background: @color-primary-softer;
+  color: @color-accent;
+  font-size: @font-xs;
+
+  &:hover {
+    background: @color-primary-soft;
+  }
+}
+
+.customValue {
+  color: @color-text-secondary;
+  white-space: nowrap;
+}
+
+.muted {
+  color: @color-text-tertiary;
+}
+
+.rowAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid @color-border;
+  border-radius: @radius-xs;
+  background: transparent;
+  color: @color-text-tertiary;
+
+  &:hover {
+    border-color: @color-primary-border;
+    color: @color-accent;
+  }
+}
+
+.addColumn {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  padding: @space-1 @space-3;
+  border-radius: @radius-pill;
+  border: 1px dashed @color-primary-border;
+  background: @color-primary-softer;
+  color: @color-accent;
+  font-size: @font-xs;
+
+  &:hover {
+    background: @color-primary-soft;
+  }
+}
+
+.emptyRows {
+  padding: @space-12;
+  text-align: center;
+  color: @color-text-tertiary;
+}
+
+.tableFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: @space-4;
+  padding: @space-3 @space-5;
+  border-top: 1px solid @color-border;
+}
+
+.search {
+  width: 260px;
+  height: 32px;
+  padding: 0 @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+
+  &::placeholder {
+    color: @color-text-tertiary;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: @color-primary;
+  }
+}
+
+// ── 右侧面板 ──────────────────────────────────────────────────────────────
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: @space-4;
+  width: 296px;
+  flex: none;
+  padding: @space-4;
+  border-left: 1px solid @color-border;
+  background: @color-surface;
+  overflow-y: auto;
+  .thin-scrollbar();
+}
+
+.panelTabs {
+  display: flex;
+  gap: @space-2;
+  padding: 3px;
+  border-radius: @radius-pill;
+  background: @color-surface-muted;
+}
+
+.panelTab,
+.panelTabActive {
+  flex: 1;
+  padding: @space-1 0;
+  text-align: center;
+  border-radius: @radius-pill;
+  font-size: @font-sm;
+}
+
+.panelTabActive {
+  background: @color-surface;
+  color: @color-accent;
+  font-weight: 500;
+  box-shadow: @shadow-xs;
+}
+
+.panelTab {
+  color: @color-text-secondary;
+}
+
+.panelSection {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+  padding: @space-4;
+  border-radius: @radius-md;
+  border: 1px solid @color-border;
+  background: @color-surface;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+
+  h3 {
+    font-size: @font-md;
+    font-weight: 600;
+    flex: 1;
+  }
+}
+
+.panelIcon {
+  font-size: @font-md;
+}
+
+.progressValue {
+  font-size: @font-sm;
+  color: @color-accent;
+  font-weight: 600;
+}
+
+.progressHint {
+  font-size: @font-xs;
+  color: @color-text-secondary;
+  line-height: 1.7;
+}
+
+.conditionList {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+}
+
+.condition {
+  padding: @space-2 @space-3;
+  border-radius: @radius-sm;
+  background: @color-primary-softer;
+  border-left: 3px solid @color-primary-light;
+  font-size: @font-xs;
+  color: @color-text-secondary;
+  line-height: 1.6;
+}
+
+.moreButtons {
+  display: flex;
+  gap: @space-2;
+}
+
+.moreChip {
+  flex: 1;
+  height: 30px;
+  border-radius: @radius-pill;
+  border: 1px solid @color-border;
+  background: @color-surface;
+  color: @color-text-secondary;
+  font-size: @font-xs;
+
+  &:hover:not(:disabled) {
+    border-color: @color-primary-border;
+    color: @color-accent;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// ── 弹窗内容 ──────────────────────────────────────────────────────────────
+.modalLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: @space-2;
+  padding: @space-8;
+  color: @color-text-secondary;
+}
+
+.modalEmpty {
+  padding: @space-6;
+  text-align: center;
+  color: @color-text-secondary;
+}
+
+.contactList {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+}
+
+.contact {
+  padding: @space-4;
+  border-radius: @radius-md;
+  border: 1px solid @color-border;
+  background: @color-surface-muted;
+}
+
+.contactHead {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+  margin-bottom: @space-3;
+
+  strong {
+    font-size: @font-md;
+  }
+}
+
+.contactConfidence {
+  margin-left: auto;
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+}
+
+.contactFields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: @space-3;
+  margin: 0;
+
+  dt {
+    font-size: @font-xs;
+    color: @color-text-tertiary;
+  }
+
+  dd {
+    margin: 2px 0 0;
+    font-size: @font-sm;
+    color: @color-text;
+    word-break: break-all;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  margin-bottom: @space-4;
+}
+
+.fieldLabel {
+  font-size: @font-sm;
+  font-weight: 500;
+}
+
+.fieldHint {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+  line-height: 1.7;
+}
+
+.input,
+.select {
+  width: 100%;
+  height: 38px;
+  padding: 0 @space-3;
+  border: 1px solid @color-border-strong;
+  border-radius: @radius-sm;
+
+  &:focus {
+    outline: none;
+    border-color: @color-primary;
+    box-shadow: 0 0 0 3px fade(@color-primary, 14%);
+  }
+}
+
+.channelRow {
+  display: flex;
+  gap: @space-2;
+}
+
+.channelChip {
+  padding: @space-2 @space-4;
+  border-radius: @radius-pill;
+  border: 1px solid @color-border;
+  background: @color-surface;
+  color: @color-text-secondary;
+  font-size: @font-sm;
+}
+
+.channelChipActive {
+  border-color: @color-primary;
+  background: @color-primary-soft;
+  color: @color-accent;
+  font-weight: 500;
+}
+
+@media (max-width: 1180px) {
+  .panel {
+    display: none;
+  }
+}

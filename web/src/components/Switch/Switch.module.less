@@ -1,0 +1,39 @@
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid @color-border-strong;
+  border-radius: @radius-pill;
+  background: @color-switch-track;
+  transition: background 0.18s ease, border-color 0.18s ease;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.knob {
+  position: absolute;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: @color-switch-knob;
+  box-shadow: @shadow-knob;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.on {
+  background: @color-primary;
+  border-color: @color-primary;
+
+  .knob {
+    background: @color-text-inverse;
+    transform: translateX(18px);
+  }
+}

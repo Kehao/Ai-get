@@ -1,0 +1,48 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: @space-3;
+  padding: @space-16 @space-6;
+  text-align: center;
+}
+
+.compact {
+  gap: @space-2;
+  padding: @space-8 @space-4;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: @radius-lg;
+  background: @color-primary-soft;
+  color: @color-accent;
+
+  .compact & {
+    width: 42px;
+    height: 42px;
+    border-radius: @radius-md;
+  }
+}
+
+.title {
+  font-size: @font-lg;
+  font-weight: 600;
+  color: @color-text;
+}
+
+.description {
+  max-width: 460px;
+  font-size: @font-md;
+  color: @color-text-secondary;
+  line-height: 1.7;
+}
+
+.action {
+  margin-top: @space-2;
+}

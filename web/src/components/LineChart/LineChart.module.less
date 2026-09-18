@@ -1,0 +1,78 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+  width: 100%;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: @space-5;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-2;
+}
+
+.dotPrimary,
+.dotSuccess {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dotPrimary {
+  background: @color-primary;
+}
+
+.dotSuccess {
+  background: @color-success;
+}
+
+.chart {
+  width: 100%;
+  height: auto;
+}
+
+.grid {
+  stroke: @color-border;
+  stroke-dasharray: 3 5;
+}
+
+.axisText {
+  fill: @color-text-tertiary;
+  font-size: 11px;
+}
+
+.linePrimary,
+.lineSuccess {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.linePrimary {
+  stroke: @color-accent;
+}
+
+.lineSuccess {
+  stroke: @color-success;
+}
+
+.pointPrimary {
+  fill: @color-surface;
+  stroke: @color-accent;
+  stroke-width: 2;
+}
+
+.pointSuccess {
+  fill: @color-surface;
+  stroke: @color-success;
+  stroke-width: 2;
+}

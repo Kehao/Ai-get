@@ -1,0 +1,92 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  border-radius: @radius-pill;
+  border: 1px solid transparent;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.sm {
+  padding: 1px @space-2;
+  font-size: @font-xs;
+}
+
+.md {
+  padding: 3px @space-3;
+  font-size: @font-sm;
+}
+
+// ── 实心色调 ──────────────────────────────────────────────────────────────
+.neutral {
+  background: @color-surface-muted;
+  color: @color-text-secondary;
+  border-color: @color-border;
+}
+
+.primary {
+  background: @color-primary-soft;
+  color: @color-accent;
+  border-color: @color-primary-border;
+}
+
+.success {
+  background: @color-success-soft;
+  color: @color-success-text;
+  border-color: fade(@color-success, 22%);
+}
+
+.warning {
+  background: @color-warning-soft;
+  color: @color-warning-text;
+  border-color: fade(@color-warning, 22%);
+}
+
+.danger {
+  background: @color-danger-soft;
+  color: @color-danger-text;
+  border-color: fade(@color-danger, 22%);
+}
+
+.info {
+  background: @color-info-soft;
+  color: @color-info-text;
+  border-color: fade(@color-info, 22%);
+}
+
+// ── 描边（透明底）──────────────────────────────────────────────────────────
+.outline {
+  background: transparent;
+
+  &.neutral {
+    color: @color-text-secondary;
+    border-color: @color-border-strong;
+  }
+
+  &.primary {
+    color: @color-accent;
+    border-color: @color-primary-border;
+  }
+
+  &.success {
+    color: @color-success-text;
+    border-color: fade(@color-success, 34%);
+  }
+
+  &.warning {
+    color: @color-warning-text;
+    border-color: fade(@color-warning, 34%);
+  }
+
+  &.danger {
+    color: @color-danger-text;
+    border-color: fade(@color-danger, 34%);
+  }
+
+  &.info {
+    color: @color-info-text;
+    border-color: fade(@color-info, 34%);
+  }
+}

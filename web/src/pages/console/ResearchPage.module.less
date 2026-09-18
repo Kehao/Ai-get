@@ -1,0 +1,275 @@
+// 企业背调首页样式。
+
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: @space-10 @space-8 @space-16;
+  display: flex;
+  flex-direction: column;
+  gap: @space-12;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: @space-5;
+  text-align: center;
+}
+
+.title {
+  font-size: @font-3xl;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.subtitle {
+  color: @color-text-secondary;
+  margin-top: -@space-3;
+}
+
+.composer {
+  width: 100%;
+  max-width: 760px;
+  background: @color-surface;
+  border: 1px solid @color-border;
+  border-radius: @radius-xl;
+  box-shadow: @shadow-md;
+  padding: @space-5;
+  text-align: left;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 96px;
+  border: 0;
+  outline: none;
+  resize: vertical;
+  font-size: @font-lg;
+  line-height: 1.7;
+  color: @color-text;
+
+  &::placeholder {
+    color: @color-text-tertiary;
+  }
+}
+
+.composerFooter {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  padding-top: @space-4;
+  border-top: 1px solid @color-border;
+}
+
+.attachButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface;
+  color: @color-text-tertiary;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.questionBlock {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+}
+
+.questionLabel {
+  font-size: @font-sm;
+  color: @color-text-tertiary;
+}
+
+.questionRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: @space-2;
+}
+
+.questionChip {
+  padding: 6px 14px;
+  border: 1px solid @color-primary-border;
+  border-radius: @radius-pill;
+  background: @color-primary-softer;
+  color: @color-accent-hover;
+  font-size: @font-sm;
+  transition: background 0.16s ease, border-color 0.16s ease;
+
+  &:hover {
+    background: @color-primary-soft;
+    border-color: @color-primary-light;
+  }
+}
+
+.recordSection {
+  display: flex;
+  flex-direction: column;
+  gap: @space-5;
+}
+
+.recordHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: @space-4;
+}
+
+.recordTitle {
+  font-size: @font-xl;
+  font-weight: 650;
+}
+
+.recordStats {
+  display: flex;
+  gap: @space-5;
+  font-size: @font-sm;
+  color: @color-text-secondary;
+}
+
+.stat {
+  strong {
+    color: @color-text;
+    font-size: @font-md;
+  }
+}
+
+.recordEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: @space-3;
+  padding: @space-12 @space-6;
+  color: @color-text-tertiary;
+  .card-surface();
+}
+
+.recordGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: @space-4;
+}
+
+.recordCard {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+  padding: @space-5;
+  .card-surface();
+  .lift-on-hover();
+}
+
+.recordTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: @space-3;
+}
+
+.recordHeading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+
+.recordName {
+  font-size: @font-lg;
+  font-weight: 650;
+  color: @color-text;
+  .text-clamp(1);
+}
+
+.recordMeta {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+}
+
+.metaText {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+
+  strong {
+    color: @color-text-secondary;
+  }
+}
+
+.moreButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: @radius-sm;
+  background: transparent;
+  color: @color-text-tertiary;
+  transition: background 0.16s ease, color 0.16s ease;
+
+  &:hover,
+  &.moreButtonOpen {
+    background: @color-surface-muted;
+    border-color: @color-border;
+    color: @color-text;
+  }
+}
+
+.recordExcerpt {
+  font-size: @font-sm;
+  color: @color-text-secondary;
+  line-height: 1.7;
+  .text-clamp(3);
+}
+
+.recordFooter {
+  display: flex;
+  align-items: center;
+  gap: @space-4;
+  padding-top: @space-3;
+  border-top: 1px solid @color-border;
+}
+
+.footerText {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+
+  strong {
+    color: @color-text-secondary;
+  }
+}
+
+.recordFooter > :last-child {
+  margin-left: auto;
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: @space-6 @space-4 @space-12;
+  }
+
+  .recordGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .recordHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

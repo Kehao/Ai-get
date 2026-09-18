@@ -1,0 +1,90 @@
+// 全局样式：重置、排版基线与少量跨页面工具类。
+// 组件样式一律落在各自 module.less 中，这里只放真正全局的内容。
+
+// 主题调色板只在全局引入一次：放进 variables.less 会让每个组件模块都重复输出一遍 :root。
+@import './theme.less';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: @font-family-base;
+  font-size: @font-md;
+  line-height: 1.6;
+  color: @color-text;
+  background: @color-surface;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+// 键盘可访问性：只在键盘导航时显示轮廓
+:focus-visible {
+  outline: 2px solid @color-primary;
+  outline-offset: 2px;
+}
+
+// 页面级滚动容器统一细滚动条
+.app-scroll {
+  .thin-scrollbar();
+}
+
+// 屏幕阅读器专用文本
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
