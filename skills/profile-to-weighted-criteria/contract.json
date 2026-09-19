@@ -1,0 +1,72 @@
+{
+  "version": "criteria/v1",
+
+  "_comment": [
+    "「画像 → 加权判定标准」的机器可读契约。这是唯一真源：",
+    "  · prompts/criteria.system.md 的契约表由它渲染（服务端 app/llm/prompts.py），",
+    "  · scripts/validate_criteria.py 的校验规则由它驱动。",
+    "改契约只改这一个文件，提示词与校验器同时跟随，不会漂移。",
+    "移植到新领域时改：categories（维度枚举与各自的 expected_kind）、min/max_criteria。",
+    "注意：各维度的默认权重不在这里——它归运行时（CATEGORY_WEIGHTS），渲染时注入提示词。"
+  ],
+
+  "min_criteria": 2,
+  "max_criteria": 8,
+
+  "categories": [
+    {
+      "name": "geo",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "text",
+      "tokens_hint": "城市名数组，如 [\"杭州\"]",
+      "expected_hint": "城市或区域名，如 \"杭州\""
+    },
+    {
+      "name": "industry",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "text",
+      "tokens_hint": "行业关键词数组，如 [\"SaaS\",\"企业服务\",\"软件\"]",
+      "expected_hint": "行业名称，如 \"企业服务与软件\""
+    },
+    {
+      "name": "size",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "range",
+      "tokens_must_be_empty": true,
+      "tokens_hint": "必须是空数组 []",
+      "expected_hint": "**必须是 \"最小人数:最大人数\" 两个整数用英文冒号连接**，如 \"0:50\"、\"50:200\"、\"300:1000000\""
+    },
+    {
+      "name": "funding",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "enum",
+      "enum_values": ["未融资", "天使轮", "A轮", "B轮", "C轮"],
+      "tokens_hint": "融资阶段数组，如 [\"A轮\"]",
+      "expected_hint": "**必须是「$enum_values」之一**"
+    },
+    {
+      "name": "business",
+      "max": 3,
+      "lenient": true,
+      "expected_kind": "empty",
+      "tokens_hint": "特征关键词数组",
+      "expected_hint": "必须是空字符串 \"\""
+    },
+    {
+      "name": "signal",
+      "max": 3,
+      "lenient": true,
+      "expected_kind": "empty",
+      "tokens_hint": "动作线索关键词数组，如 [\"融资\",\"中标\",\"招聘\",\"出海\"]",
+      "expected_hint": "必须是空字符串 \"\""
+    }
+  ],
+
+  "excluded_categories": {
+    "reachability": "与画像内容无关，任何画像都适用，由代码统一补，不让模型自作主张"
+  }
+}

@@ -19,7 +19,7 @@ import styles from './AccountPage.module.less';
 
 interface AccountOverview {
   listCount: number;
-  companyCount: number;
+  rowCount: number;
   reportCount: number;
   agentCount: number;
   knowledgeCount: number;
@@ -41,7 +41,7 @@ const loadOverview = async (): Promise<AccountOverview> => {
 
   return {
     listCount: targets.list_count,
-    companyCount: targets.company_count,
+    rowCount: targets.row_count,
     reportCount: research.report_count,
     agentCount: agents.length,
     knowledgeCount: knowledge.length,
@@ -108,7 +108,7 @@ const AccountPage = (): JSX.Element => {
         ) : (
           <div className={styles.statGrid}>
             <StatCard label="潜客列表" value={formatNumber(stats?.listCount ?? 0)} caption="已创建的挖掘列表" />
-            <StatCard label="潜客结果" value={formatNumber(stats?.companyCount ?? 0)} caption="累计发现的企业" />
+            <StatCard label="潜客结果" value={formatNumber(stats?.rowCount ?? 0)} caption="累计发现的企业与联系人" />
             <StatCard label="背调报告" value={formatNumber(stats?.reportCount ?? 0)} caption="已完成的企业调研" />
             <StatCard label="智能体" value={formatNumber(stats?.agentCount ?? 0)} caption="自定义销售智能体" />
             <StatCard label="知识库" value={formatNumber(stats?.knowledgeCount ?? 0)} caption="用于训练的企业知识" />

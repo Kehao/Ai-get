@@ -4,6 +4,10 @@ export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
 export type FieldState = 'ready' | 'failed' | 'blocked';
 export type MatchLevel = '明确符合' | '可能符合' | '待确认';
 export type SearchMode = 'company' | 'people';
+/** 挖掘任务阶段，与上游 Websets 的状态机保持一致。 */
+export type MiningPhase = 'generating_criteria' | 'searching' | 'verifying' | 'completed';
+/** 准入标准的产出路径：LLM 生成（'llm'），或内置规则引擎兜底（'rule'）。 */
+export type CriteriaSource = 'llm' | 'rule';
 export type ChannelState = 'available' | 'connected' | 'coming_soon';
 export type OpportunityLevel = '建议跟进' | '初步信号' | '暂无信号';
 export type OpportunityRange = '7d' | '30d' | '12m';
@@ -43,6 +47,34 @@ export interface TargetCondition {
   id: string;
   text: string;
   color: string;
+  /** 该条件的权重，决定它对「匹配度」的贡献大小。 */
+  weight: number;
+  /** 所属维度（geo / industry / size / funding / business / signal / reachability）。 */
+  category: string;
+  /** 判定口径：把标准翻译成一个可直接回答的问题。 */
+  question: string;
+}
+
+/** 挖掘进度四元组，恒有 full ≤ qualified ≤ verified ≤ goal。 */
+export interface MiningProgress {
+  stage: MiningPhase;
+  goal: number;
+  verified: number;
+  qualified: number;
+  full: number;
+  stop_reason: string | null;
+}
+
+/** 数据源自描述，用于说明「这批结果是谁给的」。 */
+export interface SourceInfo {
+  id: string;
+  name: string;
+  description: string;
+  capabilities: string[];
+  regions: string[];
+  priority: number;
+  cost_per_call: number;
+  requires_credentials: boolean;
 }
 
 export interface StrategyGroup {
@@ -66,6 +98,18 @@ export interface TargetList {
   follow_up_plan: string | null;
   created_at: string;
   updated_at: string;
+  /** 当前阶段；未提供时视为已完成。 */
+  phase?: MiningPhase;
+  /** 真实计数的进度四元组；任务未开始时为 null。 */
+  progress_detail?: MiningProgress | null;
+  source_id?: string;
+  source_name?: string;
+  /** 这批准入标准由哪条路径产出：LLM 生成，或内置规则引擎兜底。 */
+  criteria_source?: CriteriaSource;
+  /** 产出方的可读标签，如「LLM · criteria/v1 · deepseek-flash」。 */
+  criteria_label?: string;
+  /** 非空表示这批标准是「LLM 失败后退到规则引擎」的结果，值即失败原因。 */
+  criteria_fallback_reason?: string;
 }
 
 export interface TargetCompany {
@@ -85,6 +129,8 @@ export interface TargetCompany {
   funding_stage: string;
   created_at: string;
   custom_values: Record<string, string>;
+  /** 加权匹配得分（0-100），列表按它倒序。 */
+  score: number;
 }
 
 export interface ReferenceItem {
@@ -94,8 +140,11 @@ export interface ReferenceItem {
 
 export type ConditionStatus = '符合' | '不确定' | '不符合';
 
+/** 调研项的键：会社侧与人物侧各有一组，同一个模型同时装着两种模式的调研结果。 */
+export type ResearchKey = 'contacts' | 'official_contact' | 'person_contact' | 'profile_completeness';
+
 export interface ResearchResult {
-  key: 'contacts' | 'official_contact';
+  key: ResearchKey;
   title: string;
   state: FieldState;
   summary: string;
@@ -109,10 +158,48 @@ export interface ConditionEvaluation {
   explanation: string;
   source_label: string;
   source_url: string;
+  /** 该行对应标准的权重，与 condition 一起复现判定来源。 */
+  weight: number;
 }
 
 export interface TargetCompanyDetail {
   company: TargetCompany;
+  references: ReferenceItem[];
+  outreach_note: string;
+  outreach: OutreachPlan | null;
+  research_results: ResearchResult[];
+  evaluations: ConditionEvaluation[];
+}
+
+/**
+ * 人物行。与 `TargetCompany` **结构不同**（人是姓名/职位/所属公司与档案地址，
+ * 公司是行业/规模/融资/官网），所以是并列的两个接口，而不是一个接口里的可选字段——
+ * 后者会让「这行到底缺字段还是字段为空」无法区分。
+ */
+export interface TargetPerson {
+  id: string;
+  name: string;
+  name_local: string;
+  title: string;
+  company: string;
+  company_domain: string;
+  source_label: string;
+  source_url: string;
+  ai_summary: string;
+  summary_state: FieldState;
+  match_level: MatchLevel;
+  match_reason: string;
+  location: string;
+  contact_count: number;
+  contact_state: FieldState;
+  created_at: string;
+  custom_values: Record<string, string>;
+  /** 加权匹配得分（0-100），列表按它倒序。 */
+  score: number;
+}
+
+export interface TargetPersonDetail {
+  person: TargetPerson;
   references: ReferenceItem[];
   outreach_note: string;
   outreach: OutreachPlan | null;
@@ -149,17 +236,30 @@ export interface CompanyPage {
   page_size: number;
 }
 
+export interface PersonPage {
+  items: TargetPerson[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
 export interface TargetOverview {
-  company_count: number;
+  /** 已完成列表的结果行总数，公司行与人物行都算在内。 */
+  row_count: number;
   running_count: number;
   list_count: number;
   lists: TargetList[];
 }
 
+/**
+ * 列表详情。`companies` 与 `people` **恰有一个非空**，由 `target_list.mode` 决定：
+ * 会社列表不返回人物行，人物列表不返回公司行，避免前端拿到「另一半是空数组还是不存在」的歧义。
+ */
 export interface ListDetail {
   target_list: TargetList;
   columns: TargetColumn[];
-  companies: CompanyPage;
+  companies: CompanyPage | null;
+  people: PersonPage | null;
 }
 
 export interface OutreachStep {
@@ -185,7 +285,8 @@ export interface CreateListPayload {
   count: number;
 }
 
-export interface CompanyQuery {
+/** 列表行的查询参数。公司行与人物行共用同一组（都是分页 + 关键词 + 匹配度 + 排序）。 */
+export interface RowQuery {
   page?: number;
   page_size?: number;
   keyword?: string;

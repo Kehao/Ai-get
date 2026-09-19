@@ -1,0 +1,7 @@
+{
+  "_violates": "geo 的 lenient 给了 true。地域是硬性骨架，查不到就该判不符合，不能放水成不确定",
+  "criteria": [
+    {"category": "geo", "name": "地域：杭州", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["杭州"], "expected": "杭州", "lenient": true, "note": ""},
+    {"category": "industry", "name": "行业：企业服务与软件", "question": "主营业务是否属于企业服务或软件？", "weight": 5, "tokens": ["SaaS", "企业服务"], "expected": "企业服务与软件", "lenient": false, "note": ""}
+  ]
+}

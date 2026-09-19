@@ -1,0 +1,7 @@
+{
+  "_violates": "size.expected 写成自然语言。下游判定器要 split(\":\") 成两个整数，int(\"0 人\") 当场抛异常",
+  "criteria": [
+    {"category": "geo", "name": "地域：杭州", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["杭州"], "expected": "杭州", "lenient": false, "note": ""},
+    {"category": "size", "name": "规模：员工 50 人以下", "question": "企业员工数是否不超过 50 人？", "weight": 3, "tokens": [], "expected": "50 人以下", "lenient": false, "note": ""}
+  ]
+}

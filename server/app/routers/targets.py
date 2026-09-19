@@ -16,25 +16,53 @@ from ..models import (
     CreateOutreachRequest,
     ListDetail,
     OutreachPlan,
+    PersonPage,
+    SearchMode,
+    SourceInfo,
     Strategy,
     TargetColumn,
     TargetCompany,
     TargetCompanyDetail,
     TargetList,
     TargetOverview,
+    TargetPersonDetail,
     UpdateConditionsRequest,
     UploadResult,
     User,
 )
-from ..mock.catalog import COUNT_OPTIONS, STRATEGIES
+from ..mock.catalog import COUNT_OPTIONS, STRATEGIES_BY_MODE
+from ..providers import manifests
 from ..repositories import target_lists
 
 router = APIRouter(prefix="/api/targets", tags=["targets"])
 
 
 @router.get("/strategies", response_model=list[Strategy])
-def read_strategies() -> list[Strategy]:
-    return list(STRATEGIES)
+def read_strategies(mode: SearchMode = "company") -> list[Strategy]:
+    """推荐策略随「找公司 / 找人」切换：两者要圈的实体不同，提示词也就不同。"""
+    return list(STRATEGIES_BY_MODE[mode])
+
+
+@router.get("/sources", response_model=list[SourceInfo])
+def read_sources() -> list[SourceInfo]:
+    """当前已注册的数据源。
+
+    暴露这个接口有两个用处：让前端说明「这批结果是谁给的」，
+    以及让新增爬虫在上线后能立刻被看见——注册即出现在这里，不需要改接口。
+    """
+    return [
+        SourceInfo(
+            id=item.id,
+            name=item.name,
+            description=item.description,
+            capabilities=list(item.capabilities),
+            regions=list(item.regions),
+            priority=item.priority,
+            cost_per_call=item.cost_per_call,
+            requires_credentials=item.requires_credentials,
+        )
+        for item in manifests()
+    ]
 
 
 @router.get("/count-options", response_model=list[CountOption])
@@ -44,9 +72,9 @@ def read_count_options() -> list[CountOption]:
 
 @router.get("/lists", response_model=TargetOverview)
 def read_overview(user: User = Depends(current_user)) -> TargetOverview:
-    company_count, running_count, list_count = target_lists.stats()
+    row_count, running_count, list_count = target_lists.stats()
     return TargetOverview(
-        company_count=company_count,
+        row_count=row_count,
         running_count=running_count,
         list_count=list_count,
         lists=target_lists.all_lists(),
@@ -85,7 +113,18 @@ def read_list_detail(
     return ListDetail(
         target_list=target_list,
         columns=target_lists.columns(list_id),
-        companies=target_lists.page_companies(list_id, page, page_size, keyword, match_level, sort),
+        # 按模式只填一侧：找人列表没有「行业」「规模」这些列，
+        # 用一个字段装两种行会让前端只能按最小公倍数定义列。
+        companies=(
+            None
+            if target_list.mode == "people"
+            else target_lists.page_companies(list_id, page, page_size, keyword, match_level, sort)
+        ),
+        people=(
+            target_lists.page_people(list_id, page, page_size, keyword, match_level, sort)
+            if target_list.mode == "people"
+            else None
+        ),
     )
 
 
@@ -101,6 +140,25 @@ def read_companies(
 ) -> CompanyPage:
     _require_list(list_id)
     return target_lists.page_companies(list_id, page, page_size, keyword, match_level, sort)
+
+
+@router.get("/lists/{list_id}/people", response_model=PersonPage)
+def read_people(
+    list_id: str,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    keyword: str = Query(default=""),
+    match_level: str = Query(default=""),
+    sort: str = Query(default="match"),
+    user: User = Depends(current_user),
+) -> PersonPage:
+    """人物列表的一页。
+
+    与 `/companies` 并列而不是让它返回两种形状：接口的响应模型就是前端的类型定义，
+    同一个路径按模式返回不同结构会让「列表有两种行」这件事藏在运行时。
+    """
+    _require_list(list_id)
+    return target_lists.page_people(list_id, page, page_size, keyword, match_level, sort)
 
 
 @router.post("/lists/{list_id}/columns", response_model=TargetColumn, status_code=status.HTTP_201_CREATED)
@@ -164,6 +222,20 @@ def read_company_detail(
     detail = target_lists.company_detail(list_id, row_id)
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="企业记录不存在")
+    return detail
+
+
+@router.get("/lists/{list_id}/people/{row_id}", response_model=TargetPersonDetail)
+def read_person_detail(
+    list_id: str,
+    row_id: str,
+    user: User = Depends(current_user),
+) -> TargetPersonDetail:
+    """人物详情面板。区块骨架与会社详情一致，内容换成档案与人物侧的调研项。"""
+    _require_list(list_id)
+    detail = target_lists.person_detail(list_id, row_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="人物记录不存在")
     return detail
 
 

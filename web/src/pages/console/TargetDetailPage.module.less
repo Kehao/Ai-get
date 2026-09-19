@@ -285,6 +285,18 @@
   }
 }
 
+.score {
+  display: inline-block;
+  min-width: 34px;
+  padding: 2px 6px;
+  border-radius: @radius-pill;
+  background: @color-surface-muted;
+  color: @color-text;
+  font-size: @font-xs;
+  font-weight: 600;
+  text-align: center;
+}
+
 .customValue {
   color: @color-text-secondary;
   white-space: nowrap;
@@ -531,6 +543,34 @@
   gap: @space-2;
 }
 
+// 标准产出方。字体比条件行还小一档：它是「这批标准怎么来的」的旁注，
+// 不是需要用户操作的内容，但必须能一眼看到——否则降级会变成无声的质量下滑。
+.criteriaSource {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 @space-1;
+  margin-bottom: @space-3;
+  font-size: 11px;
+  line-height: 1.6;
+  color: @color-text-tertiary;
+
+  svg {
+    flex: none;
+    color: @color-accent;
+  }
+
+  strong {
+    color: @color-text-secondary;
+    font-weight: 600;
+  }
+}
+
+.criteriaFallback {
+  flex-basis: 100%;
+  color: @color-warning-text;
+}
+
 .conditionRow {
   display: flex;
   align-items: stretch;
@@ -565,6 +605,32 @@
     outline: none;
     background: @color-surface-muted;
   }
+}
+
+// 条件的维度与权重：只读信息，紧贴输入框右侧，窄面板下也不再换行
+.conditionMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  flex: none;
+  padding: 0 @space-2;
+  border-left: 1px solid @color-border;
+}
+
+.conditionCategory {
+  font-size: 10px;
+  color: @color-text-tertiary;
+  white-space: nowrap;
+}
+
+.conditionWeight {
+  padding: 0 5px;
+  border-radius: @radius-pill;
+  background: @color-primary-softer;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 600;
+  color: @color-accent;
 }
 
 .conditionRemove {
@@ -761,6 +827,52 @@
   font-size: @font-xs;
   color: @color-text-secondary;
   line-height: 1.7;
+}
+
+// 进度四元组：真实计数而非插值百分比，四项恒有 full ≤ qualified ≤ verified ≤ goal
+.progressSteps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: @space-2;
+  margin: 0;
+  padding: @space-2 0;
+  border-top: 1px dashed @color-border;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  dt {
+    font-size: 10px;
+    color: @color-text-tertiary;
+    white-space: nowrap;
+  }
+
+  dd {
+    margin: 0;
+    font-size: @font-md;
+    font-weight: 600;
+    color: @color-text;
+  }
+}
+
+.stopReason {
+  font-size: 11px;
+  color: @color-warning-text;
+  line-height: 1.6;
+}
+
+.sourceLine {
+  font-size: 11px;
+  color: @color-text-tertiary;
+  line-height: 1.6;
+
+  strong {
+    color: @color-text-secondary;
+  }
 }
 
 .moreButtons {
@@ -1062,6 +1174,16 @@
   flex: none;
   font-size: 10px;
   color: @color-text-tertiary;
+}
+
+.evalWeight {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: @radius-pill;
+  background: @color-primary-softer;
+  font-size: 10px;
+  color: @color-accent;
+  white-space: nowrap;
 }
 
 .evalText {

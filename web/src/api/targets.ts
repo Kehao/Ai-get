@@ -1,23 +1,27 @@
 import { request, upload } from './client';
 import type {
   CompanyPage,
-  CompanyQuery,
   Contact,
   CountOption,
   CreateListPayload,
   ListDetail,
   OutreachPlan,
+  PersonPage,
+  RowQuery,
+  SearchMode,
+  SourceInfo,
   Strategy,
   TargetColumn,
   TargetCompany,
   TargetCompanyDetail,
   TargetList,
   TargetOverview,
+  TargetPersonDetail,
   UpdateConditionsPayload,
   UploadResult,
 } from './types';
 
-const buildQuery = (params: CompanyQuery): string => {
+const buildQuery = (params: RowQuery): string => {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== '') {
@@ -28,9 +32,14 @@ const buildQuery = (params: CompanyQuery): string => {
   return text ? `?${text}` : '';
 };
 
-export const readStrategies = (): Promise<Strategy[]> => request<Strategy[]>('/targets/strategies');
+/** 推荐策略随「找公司 / 找人」切换，两种模式各有一组提示词。 */
+export const readStrategies = (mode: SearchMode): Promise<Strategy[]> =>
+  request<Strategy[]>(`/targets/strategies?mode=${mode}`);
 
 export const readCountOptions = (): Promise<CountOption[]> => request<CountOption[]>('/targets/count-options');
+
+/** 当前注册的数据源清单，用于界面标注结果出处。 */
+export const readSources = (): Promise<SourceInfo[]> => request<SourceInfo[]>('/targets/sources');
 
 export const readOverview = (): Promise<TargetOverview> => request<TargetOverview>('/targets/lists');
 
@@ -39,11 +48,15 @@ export const createList = (payload: CreateListPayload): Promise<TargetList> =>
 
 export const uploadList = (file: File): Promise<UploadResult> => upload<UploadResult>('/targets/lists/upload', file);
 
-export const readListDetail = (listId: string, params: CompanyQuery = {}): Promise<ListDetail> =>
+export const readListDetail = (listId: string, params: RowQuery = {}): Promise<ListDetail> =>
   request<ListDetail>(`/targets/lists/${listId}${buildQuery(params)}`);
 
-export const readCompanies = (listId: string, params: CompanyQuery = {}): Promise<CompanyPage> =>
+export const readCompanies = (listId: string, params: RowQuery = {}): Promise<CompanyPage> =>
   request<CompanyPage>(`/targets/lists/${listId}/companies${buildQuery(params)}`);
+
+/** 人物行的分页接口。与 `readCompanies` 并列，返回的是结构不同的人物行。 */
+export const readPeople = (listId: string, params: RowQuery = {}): Promise<PersonPage> =>
+  request<PersonPage>(`/targets/lists/${listId}/people${buildQuery(params)}`);
 
 export const addColumn = (listId: string, name: string): Promise<TargetColumn> =>
   request<TargetColumn>(`/targets/lists/${listId}/columns`, { method: 'POST', body: { name } });
@@ -59,6 +72,9 @@ export const remine = (listId: string): Promise<TargetList> =>
 
 export const readCompanyDetail = (listId: string, rowId: string): Promise<TargetCompanyDetail> =>
   request<TargetCompanyDetail>(`/targets/lists/${listId}/companies/${rowId}`);
+
+export const readPersonDetail = (listId: string, rowId: string): Promise<TargetPersonDetail> =>
+  request<TargetPersonDetail>(`/targets/lists/${listId}/people/${rowId}`);
 
 export const readOutreach = (listId: string): Promise<OutreachPlan | null> =>
   request<OutreachPlan | null>(`/targets/lists/${listId}/outreach`);

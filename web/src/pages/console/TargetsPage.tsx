@@ -13,6 +13,7 @@ import SegmentedControl from '@/components/SegmentedControl';
 import Tag from '@/components/Tag';
 import { useToast } from '@/components/Toast';
 import { ROUTES } from '@/constants/routes';
+import { CATEGORY_LABELS, MINING_PHASE_LABELS } from '@/constants/targets';
 import { useAsync } from '@/hooks/useAsync';
 import { formatRelativeTime } from '@/utils/format';
 
@@ -32,6 +33,14 @@ const LIST_ACTIONS = [
 const STATUS_TONES = { failed: 'danger', running: 'warning', completed: 'success', pending: 'neutral' } as const;
 const STATUS_LABELS = { failed: '失败', running: '进行中', completed: '已完成', pending: '排队中' } as const;
 
+/** 进行中的列表用阶段名替代笼统的「进行中」，让用户知道卡在哪一步。 */
+const phaseLabel = (list: TargetList): string => {
+  if (list.status !== 'running') {
+    return STATUS_LABELS[list.status];
+  }
+  return MINING_PHASE_LABELS[list.phase ?? 'searching'] ?? STATUS_LABELS.running;
+};
+
 const TargetsPage = (): JSX.Element => {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -46,11 +55,12 @@ const TargetsPage = (): JSX.Element => {
     pollIntervalMs: 2500,
     shouldStopPolling: (data) => data !== null && data.running_count === 0,
   });
-  const strategies = useAsync(() => targetsApi.readStrategies());
+  // 推荐策略随「找公司 / 找人」切换，deps 必须带上 mode，否则切模式不会重新请求
+  const strategies = useAsync(() => targetsApi.readStrategies(mode), { deps: [mode] });
   const countOptions = useAsync(() => targetsApi.readCountOptions());
 
   const lists = overview.data?.lists ?? [];
-  const companyTotal = overview.data?.company_count ?? 0;
+  const rowTotal = overview.data?.row_count ?? 0;
   const runningTotal = overview.data?.running_count ?? 0;
   const listTotal = overview.data?.list_count ?? 0;
 
@@ -208,7 +218,7 @@ const TargetsPage = (): JSX.Element => {
           <h2 className={styles.listTitle}>我的列表</h2>
           <div className={styles.listStats}>
             <span className={styles.stat}>
-              <strong>{companyTotal}</strong> 条结果
+              <strong>{rowTotal}</strong> 条结果
             </span>
             <span className={styles.stat}>
               <strong>{runningTotal}</strong> 进行中
@@ -235,12 +245,54 @@ const TargetsPage = (): JSX.Element => {
                 >
                   <span className={styles.listQuery}>{list.query}</span>
                   <span className={styles.listMeta}>
-                    <Tag tone={STATUS_TONES[list.status]}>{STATUS_LABELS[list.status]}</Tag>
+                    <Tag tone={STATUS_TONES[list.status]}>{phaseLabel(list)}</Tag>
                     <span className={styles.metaText}>{formatRelativeTime(list.created_at)}</span>
                     <span className={styles.metaText}>
-                      <strong>{list.status === 'completed' ? list.requested_count : list.discovered_count}</strong> 家公司
+                      <strong>{list.status === 'completed' ? list.requested_count : list.discovered_count}</strong>{' '}
+                      {list.mode === 'people' ? '位联系人' : '家公司'}
                     </span>
+                    {list.status === 'running' && list.progress_detail ? (
+                      <span className={styles.metaText}>
+                        已校验 <strong>{list.progress_detail.verified}</strong> / {list.progress_detail.goal}
+                      </span>
+                    ) : null}
+                    {list.source_name ? <span className={styles.metaText}>数据源 {list.source_name}</span> : null}
                   </span>
+
+                  {list.condition_items.length > 0 ? (
+                    <span className={styles.listCriteria}>
+                      <span className={styles.criteriaLabel}>挖掘标准</span>
+                      {list.criteria_label ? (
+                        <span
+                          className={[styles.criteriaEngine, list.criteria_fallback_reason ? styles.criteriaEngineWarn : '']
+                            .filter(Boolean)
+                            .join(' ')}
+                          title={
+                            list.criteria_fallback_reason
+                              ? `已降级到规则引擎：${list.criteria_fallback_reason}`
+                              : '这批准入标准由它生成'
+                          }
+                        >
+                          {list.criteria_source === 'llm' ? <Sparkles size={11} /> : null}
+                          {list.criteria_label}
+                        </span>
+                      ) : null}
+                      {list.condition_items.map((condition) => (
+                        <span
+                          key={condition.id}
+                          className={styles.criteriaChip}
+                          title={[CATEGORY_LABELS[condition.category] ?? condition.category, condition.question]
+                            .filter((part) => part !== undefined && part !== '')
+                            .join(' · ')}
+                        >
+                          <i className={styles.criteriaBar} style={{ background: condition.color }} />
+                          <span className={styles.criteriaText}>{condition.text}</span>
+                          {condition.weight > 0 ? <em className={styles.criteriaWeight}>{condition.weight}</em> : null}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
+
                   <span className={styles.listPlan}>{list.follow_up_plan ?? '暂无跟进计划'}</span>
                 </button>
 

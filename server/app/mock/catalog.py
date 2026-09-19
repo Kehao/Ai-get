@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..config import COMPANY_COUNT_OPTIONS
-from ..models import AgentTemplate, Channel, CountOption, Strategy
+from ..models import AgentTemplate, Channel, CountOption, SearchMode, Strategy
 
 STRATEGIES: tuple[Strategy, ...] = (
     Strategy(id="strategy-beijing-ai-b", text="在北京/上海/深圳的 AI B2B 公司，B 轮融资，员工 50-200 人"),
@@ -15,6 +15,20 @@ STRATEGIES: tuple[Strategy, ...] = (
     Strategy(id="strategy-outbound-blog", text="持续更新博客且话题与「Outbound Sales」相关的公司"),
     Strategy(id="strategy-webinar", text="定期举办网络研讨会 (Webinar) 的 B2B SaaS 品牌"),
 )
+
+# 找人模式问的是「什么职位 + 在什么样的公司」，与找公司那组要圈的实体不同，提示词也完全不同
+# （参考站两种模式各有一组，这里按同样口径给出中文版）。
+PEOPLE_STRATEGIES: tuple[Strategy, ...] = (
+    Strategy(id="strategy-people-vp-sales", text="正在全球扩张的 SaaS 公司的销售副总裁或 CRO"),
+    Strategy(id="strategy-people-bizdev", text="AI 工具厂商的商务拓展负责人"),
+    Strategy(id="strategy-people-cmo", text="云安全初创公司的 CMO 或市场总监"),
+    Strategy(id="strategy-people-growth", text="正在招聘付费获客岗位的 AI 初创公司的增长负责人"),
+)
+
+STRATEGIES_BY_MODE: dict[SearchMode, tuple[Strategy, ...]] = {
+    "company": STRATEGIES,
+    "people": PEOPLE_STRATEGIES,
+}
 
 COUNT_OPTIONS: tuple[CountOption, ...] = tuple(CountOption(value=value) for value in COMPANY_COUNT_OPTIONS)
 

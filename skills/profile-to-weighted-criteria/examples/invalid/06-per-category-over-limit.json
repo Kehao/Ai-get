@@ -1,0 +1,8 @@
+{
+  "_violates": "geo 输出了两条，超过该维度的上限 1。同一维度重复计分会让某个骨架维度被放大",
+  "criteria": [
+    {"category": "geo", "name": "地域：杭州", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["杭州"], "expected": "杭州", "lenient": false, "note": ""},
+    {"category": "geo", "name": "地域：宁波", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["宁波"], "expected": "宁波", "lenient": false, "note": ""},
+    {"category": "industry", "name": "行业：企业服务与软件", "question": "主营业务是否属于企业服务或软件？", "weight": 5, "tokens": ["SaaS", "企业服务"], "expected": "企业服务与软件", "lenient": false, "note": ""}
+  ]
+}

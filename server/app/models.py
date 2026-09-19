@@ -15,7 +15,16 @@ TaskStatus = Literal["pending", "running", "completed", "failed"]
 SearchMode = Literal["company", "people"]
 ChannelState = Literal["available", "connected", "coming_soon"]
 ConditionStatus = Literal["符合", "不确定", "不符合"]
-ResearchKey = Literal["contacts", "official_contact"]
+# 智能调研的子任务标识。会社与人物各用各的：会社是「企业关键联系人 / 官网联系方式」，
+# 人物是「联系方式 / 档案完整度」——两者不是同一件事，共用标识会让前端
+# 不得不用标题去猜该渲染哪种区块。
+ResearchKey = Literal["contacts", "official_contact", "person_contact", "profile_completeness"]
+
+# 挖掘任务阶段，与上游 Websets 的状态机保持一致。
+MiningPhase = Literal["generating_criteria", "searching", "verifying", "completed"]
+
+# 准入标准的产出路径：LLM 生成，或内置规则引擎兜底。
+CriteriaSource = Literal["llm", "rule"]
 
 
 class User(BaseModel):
@@ -65,11 +74,48 @@ class CountOption(BaseModel):
 
 
 class TargetCondition(BaseModel):
-    """一条挖掘判断条件。color 是展示用的左侧色条，由后端下发保证前后端一致。"""
+    """一条挖掘判断条件。
+
+    `color` 是展示用的左侧色条，由后端下发保证前后端一致；
+    其余字段来自 L0 资格标准引擎，`weight` 与 `category` 让前端能解释
+    「这条条件有多重要、属于哪个维度」，`question` 是它的判定口径。
+    """
 
     id: str
     text: str
     color: str
+    weight: int = 0
+    category: str = ""
+    question: str = ""
+
+
+class MiningProgress(BaseModel):
+    """挖掘进度四元组，字段含义与上游 Websets 的 progress 一致。
+
+    它是**真实计数**而不是插值出来的百分比：`verified` 是已判定过的候选数，
+    `qualified` 是通过资格验证的数量，`full` 是完全匹配的数量。
+    恒有 `full ≤ qualified ≤ verified ≤ goal`。
+    """
+
+    stage: MiningPhase
+    goal: int
+    verified: int
+    qualified: int
+    full: int
+    stop_reason: str | None = None
+
+
+class SourceInfo(BaseModel):
+    """数据源的自描述，用于让前端说明「这批结果是谁给的」。"""
+
+    id: str
+    name: str
+    description: str
+    capabilities: list[str]
+    regions: list[str]
+    priority: int
+    cost_per_call: float
+    requires_credentials: bool
 
 
 class StrategyGroup(BaseModel):
@@ -95,6 +141,18 @@ class TargetList(BaseModel):
     follow_up_plan: str | None
     created_at: datetime
     updated_at: datetime
+    phase: MiningPhase = "completed"
+    progress_detail: MiningProgress | None = None
+    source_id: str = ""
+    source_name: str = ""
+    # 这批标准由哪条路径产出。标准会被冻结进任务记录，判定结果全由它推导，
+    # 所以必须标出产出方——否则 LLM 失败静默降级到规则引擎时，
+    # 用户只会看到「标准变了」却不知道原因。
+    criteria_source: CriteriaSource = "rule"
+    # 产出方的可读标签，直接给前端展示（如 "LLM · criteria/v1 · deepseek-flash"）。
+    criteria_label: str = ""
+    # 降级发生时记录原因，未降级时为空字符串。
+    criteria_fallback_reason: str = ""
 
 
 class TargetCompany(BaseModel):
@@ -114,6 +172,43 @@ class TargetCompany(BaseModel):
     funding_stage: str
     created_at: datetime
     custom_values: dict[str, str] = Field(default_factory=dict)
+    score: int = 0
+
+
+class TargetPerson(BaseModel):
+    """找人模式下的一行**人物档案**。
+
+    刻意不复用 `TargetCompany`：两者的列完全不同（人物行是
+    名称/所属公司/职位/网址/AI 摘要/综合结果），硬塞进公司模型就会出现
+    「行业」列显示职位、「规模」列显示公司名这种错位。
+    公司行有行业、规模、融资与联系人计数，人物行有职位、所属公司与档案地址——
+    共有的只有判定结论（`match_level` / `match_reason` / `score`）与创建时间。
+    """
+
+    id: str
+    # 展示名（海外职业档案多为拼音或英文写法）与中文本名，两个都给前端，
+    # 由前端决定何时并列显示——判定用的姓名匹配是在后端完成的，这里只是展示。
+    name: str
+    name_local: str
+    title: str
+    company: str
+    company_domain: str
+    # 档案来源（「领英」「公司团队页」…）与档案地址。列表的「网址」列显示成
+    # 「来源 + 域名 + 路径」，所以两者都要给。
+    source_label: str
+    source_url: str
+    ai_summary: str
+    summary_state: FieldState
+    match_level: MatchLevel
+    match_reason: str
+    location: str
+    # 可获取的公开联系方式条数（0 或 1）。人物没有「企业关键联系人」这一层下钻，
+    # 所以它不与 `TargetCompany.contact_count` 同义。
+    contact_count: int = 0
+    contact_state: FieldState = "ready"
+    created_at: datetime
+    custom_values: dict[str, str] = Field(default_factory=dict)
+    score: int = 0
 
 
 class ReferenceItem(BaseModel):
@@ -132,7 +227,10 @@ class ResearchResult(BaseModel):
 
 
 class ConditionEvaluation(BaseModel):
-    """准入条件评估：某条条件在该企业上的判定结果与依据。"""
+    """准入条件评估：某条标准在该企业上的判定结果与依据。
+
+    `weight` 与 `condition` 一起复现了这一行的来源标准，使「为什么匹配」可逐条复核。
+    """
 
     condition: str
     status: ConditionStatus
@@ -140,6 +238,7 @@ class ConditionEvaluation(BaseModel):
     explanation: str
     source_label: str
     source_url: str
+    weight: int = 0
 
 
 class TargetColumn(BaseModel):
@@ -160,7 +259,12 @@ class Contact(BaseModel):
 
 
 class TargetOverview(BaseModel):
-    company_count: int
+    """潜客挖掘概览。
+
+    `row_count` 是**已完成列表的结果行总数**，公司行与人物行都算，所以不叫 `company_count`。
+    """
+
+    row_count: int
     running_count: int
     list_count: int
     lists: list[TargetList]
@@ -168,6 +272,13 @@ class TargetOverview(BaseModel):
 
 class CompanyPage(BaseModel):
     items: list[TargetCompany]
+    total: int
+    page: int
+    page_size: int
+
+
+class PersonPage(BaseModel):
+    items: list[TargetPerson]
     total: int
     page: int
     page_size: int
@@ -188,9 +299,17 @@ class AddMoreRequest(BaseModel):
 
 
 class ListDetail(BaseModel):
+    """列表详情页的首屏数据。
+
+    `companies` 与 `people` **只填其中一个**，取决于 `target_list.mode`。
+    不用「同一个字段装两种行」的写法：那样前端的列定义就只能取两者的交集，
+    等于把「找人」硬做成「找公司」的一个皮肤。
+    """
+
     target_list: TargetList
     columns: list[TargetColumn]
-    companies: CompanyPage
+    companies: CompanyPage | None = None
+    people: PersonPage | None = None
 
 
 class OutreachStep(BaseModel):
@@ -212,6 +331,22 @@ class OutreachPlan(BaseModel):
 
 class TargetCompanyDetail(BaseModel):
     company: TargetCompany
+    references: list[ReferenceItem]
+    outreach_note: str
+    outreach: OutreachPlan | None
+    research_results: list[ResearchResult]
+    evaluations: list[ConditionEvaluation]
+
+
+class TargetPersonDetail(BaseModel):
+    """人物详情面板：与会社模式的详情**结构相同、内容不同**。
+
+    区块骨架（档案 / References / 智能调研 / 智能触达 / 准入条件评估）是同一套，
+    因为用户要在同一个面板里读它；不同的是档案字段与调研项——
+    人物没有「官网联系方式挖掘」这种下钻，只有他自己的档案与联系方式。
+    """
+
+    person: TargetPerson
     references: list[ReferenceItem]
     outreach_note: str
     outreach: OutreachPlan | None
@@ -414,9 +549,50 @@ class OpportunityPage(BaseModel):
     opportunities: list[OpportunityItem]
 
 
+# ── LLM 接入状态 ──────────────────────────────────────────────────────────
+
+
+class LlmRounds(BaseModel):
+    """LLM 调用的累计计数。**进程内统计**，后端重启即归零。
+
+    字段与 `app/llm/generator.py` 的 `GenerationStats.describe()` 一一对应。
+    """
+
+    calls: int = 0
+    cache_hits: int = 0
+    failures: int = 0
+    total_tokens: int = 0
+    cache_size: int = 0
+    last_error_kind: str = ""
+    last_error_message: str = ""
+
+
+class LlmStatus(BaseModel):
+    """LLM 接入的当前状态，回答「这批标准走的是 LLM 还是规则引擎，为什么」。
+
+    `enabled` 与 `configured` 刻意分成两个字段：`enabled=true` 但没填密钥是
+    最常见的配置错误，只有分开报，前端才能给出「已开启但缺少密钥」这种
+    可操作的提示，而不是笼统地说「LLM 不可用」。
+
+    字段与 `app/llm/config.py` 的 `LlmSettings.describe()` 对应，**不含密钥**。
+    """
+
+    enabled: bool
+    configured: bool
+    usable: bool
+    model: str
+    base_url: str
+    timeout_seconds: int
+    max_tokens: int
+    judge_enabled: bool
+    prompt_version: str
+    # 提示词所在目录（可读标识）。提示词是仓库里的技能资产，可能被换掉，
+    # 所以要和 prompt_version 一起报出来，才能回答「这批标准用的是哪份提示词」。
+    prompt_dir: str
+    rounds: LlmRounds
+
+
 # ── 工作空间设置 ──────────────────────────────────────────────────────────
-
-
 class WorkspaceSettings(BaseModel):
     workspace_name: str
     default_channel: str

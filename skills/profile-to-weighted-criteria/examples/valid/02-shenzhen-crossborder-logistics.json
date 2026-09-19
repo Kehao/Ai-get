@@ -1,0 +1,11 @@
+{
+  "_note": "画像只说两件事 → 只输出两维，没有编造 size / funding",
+  "profile": "深圳的跨境电商物流服务商",
+  "user_conditions": [],
+  "criteria": [
+    {"category": "geo", "name": "地域：深圳", "question": "该企业是否注册或主要经营地在深圳？", "weight": 5, "tokens": ["深圳", "深圳市", "前海", "盐田", "宝安", "龙岗", "福田", "南山"], "expected": "深圳", "lenient": false, "note": "以工商注册地址或官网总部地址为准"},
+    {"category": "industry", "name": "行业：跨境电商物流", "question": "该企业的主营业务是否属于跨境电商物流服务？", "weight": 5, "tokens": ["跨境电商", "跨境物流", "国际物流", "跨境供应链", "货运代理", "物流服务", "跨境运输"], "expected": "跨境电商物流", "lenient": false, "note": "依据工商经营范围或官网主营描述判定"},
+    {"category": "business", "name": "业务：跨境物流服务能力", "question": "该企业是否提供海外仓、国际货运、清关或尾程派送等跨境物流服务？", "weight": 3, "tokens": ["海外仓", "国际货运", "海运", "空运", "集运", "清关", "报关", "尾程派送", "专线", "货代", "头程", "FBA"], "expected": "", "lenient": true, "note": "公开资料未提及视为不排除，需结合官网业务页判断"},
+    {"category": "business", "name": "业务：服务电商卖家", "question": "该企业是否面向亚马逊、独立站等跨境电商卖家提供物流配套？", "weight": 2, "tokens": ["亚马逊", "Amazon", "Shopify", "独立站", "eBay", "速卖通", "TikTok", "卖家", "电商客户", "FBA"], "expected": "", "lenient": true, "note": "可从客户案例、合作平台等公开信息中检索"}
+  ]
+}

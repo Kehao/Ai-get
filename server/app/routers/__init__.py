@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from . import agents, auth, connect, knowledge, opportunities, research, settings, targets
+from . import agents, auth, connect, knowledge, llm, opportunities, research, settings, targets
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
@@ -15,5 +15,6 @@ api_router.include_router(connect.router)
 api_router.include_router(knowledge.router)
 api_router.include_router(opportunities.router)
 api_router.include_router(settings.router)
+api_router.include_router(llm.router)
 
 __all__ = ["api_router"]

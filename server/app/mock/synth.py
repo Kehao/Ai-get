@@ -68,6 +68,17 @@ INDUSTRY_PACKS: tuple[tuple[str, str, str, str], ...] = (
     ("文化传媒", "内容营销", "品牌内容制作与投放", "10-60 人"),
     ("农业科技", "农资服务", "订单农业与农资集采", "30-140 人"),
     ("建筑建材", "工程服务", "机电安装与建材集采", "40-180 人"),
+    # 传统线下行业包。前十个包偏 B2B，画像若落在文旅、零售、餐饮这类到店
+    # 生意上，packs_matching() 一个都匹配不到，合成会退回全部包，
+    # 于是「找景区民宿」的批量结果里混进半导体与工业软件。
+    # 新包的 industry 字段会拼进合成企业名，要写成能自然接在「城市 + 品牌」后面的词。
+    ("文旅", "景区酒店民宿", "景区门票住宿与度假预订到店核销", "10-60 人"),
+    ("零售", "便利店商超", "门店零售与社群团购到店自提", "10-80 人"),
+    ("餐饮", "茶饮烘焙小吃", "堂食外卖运营与会员储值复购", "20-120 人"),
+    ("农产品", "生鲜食品", "产地直采与食品加工分销", "10-70 人"),
+    ("环保", "节能光伏水处理", "环境治理与节能改造运维", "30-150 人"),
+    ("职业培训", "艺术技能教育", "职业技能与兴趣培训交付", "20-90 人"),
+    ("家居建材", "家装五金照明", "家居建材经销与工程配套", "30-180 人"),
 )
 
 FUNDING_STAGES: tuple[str, ...] = ("未融资", "天使轮", "A 轮", "A 轮", "B 轮", "C 轮")
@@ -91,22 +102,32 @@ class _CompanyIndex:
     def corpus_size(self) -> int:
         return self._corpus_size
 
-    def at(self, index: int, preferred_city: str | None = None) -> CompanySeed:
-        """取第 index 家企业；超出语料范围时合成，合成条目优先落在目标城市。"""
+    def at(self, index: int, preferred_city: str | None = None, industry_tokens: tuple[str, ...] = ()) -> CompanySeed:
+        """取第 index 家企业；超出语料范围时合成，合成条目优先落在目标城市与目标行业。"""
         if index < self._corpus_size:
             return COMPANY_SEEDS[index]
-        return self._synthesize(index - self._corpus_size, preferred_city)
+        return self.synthesize(index - self._corpus_size, preferred_city, industry_tokens)
 
-    def _synthesize(self, overflow_index: int, preferred_city: str | None) -> CompanySeed:
-        city = preferred_city or CITIES[overflow_index % len(CITIES)]
-        brand_cn, brand_py = BRANDS[(overflow_index // len(CITIES)) % len(BRANDS)]
-        industry, sub_industry, business, employees = INDUSTRY_PACKS[
-            (overflow_index // (len(CITIES) * len(BRANDS))) % len(INDUSTRY_PACKS)
-        ]
-        funding = FUNDING_STAGES[overflow_index % len(FUNDING_STAGES)]
-        momentum = MOMENTUM[(overflow_index // len(FUNDING_STAGES)) % len(MOMENTUM)]
+    def synthesize(
+        self,
+        index: int,
+        preferred_city: str | None = None,
+        industry_tokens: tuple[str, ...] = (),
+    ) -> CompanySeed:
+        """按目标城市与行业提示合成条目。
+
+        手工语料覆盖的行业是有限的，任何稍大的数量都要靠这里补齐；`industry_tokens`
+        让合成结果落在画像提到的行业里，否则「找消费品企业」的后续结果会整批跑到别的行业。
+        """
+        city = preferred_city or CITIES[index % len(CITIES)]
+        brand_cn, brand_py = BRANDS[index % len(BRANDS)]
+        packs = packs_matching(industry_tokens) or INDUSTRY_PACKS
+        industry, sub_industry, business, employees = packs[(index // len(BRANDS)) % len(packs)]
+        funding = FUNDING_STAGES[index % len(FUNDING_STAGES)]
+        momentum = MOMENTUM[(index // len(FUNDING_STAGES)) % len(MOMENTUM)]
         name = f"{city}{brand_cn}{industry}有限公司"
-        domain = f"{brand_py}{overflow_index % 900 + 100}.com"
+        # 域名的序号段留出四位数：原来的两位序号在超过 900 条时会绕回重名。
+        domain = f"{brand_py}{index % 9000 + 1000}.com"
         summary = (
             f"{name}是一家位于{city}的{industry}企业，主营{business}，员工规模约 {employees}，"
             f"当前融资阶段为 {funding}。公开信息显示其正在{momentum}，"
@@ -121,6 +142,16 @@ class _CompanyIndex:
             employees=employees,
             funding_stage=funding,
         )
+
+
+def packs_matching(industry_tokens: tuple[str, ...]) -> tuple[tuple[str, str, str, str], ...]:
+    """挑出行业词命中的合成模板。词表同时覆盖模板名称、细分行业与业务描述。"""
+    if not industry_tokens:
+        return ()
+    matched = tuple(
+        pack for pack in INDUSTRY_PACKS if any(token in f"{pack[0]}{pack[1]}{pack[2]}" for token in industry_tokens)
+    )
+    return matched
 
 
 COMPANY_INDEX = _CompanyIndex()

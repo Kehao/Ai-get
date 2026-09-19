@@ -1,19 +1,24 @@
-"""寻找对象的文本解析：把一段自然语言画像拆成条件条目与挖掘策略分组。
+"""挖掘策略说明的文本生成。
 
-条件条目的左侧色条颜色由这里统一分配，避免前后端各写一份色表后逐渐漂移。
+条件条目本身已经改由 L0 资格标准引擎产出（见 `qualification.criteria`），
+这里只保留「挖掘策略」区块的说明文案——它解释的是**这批结果按什么思路被圈出来**，
+属于展示层内容，与判定逻辑无关。
+
+会社与找人两种模式的策略结构不同（2 组 vs 6 组，分组依据也不同），所以实现分开：
+本模块只做会社模式 + 按模式分发，找人那套在 `people_strategy.py`。
 """
 
 from __future__ import annotations
 
-from ..models import StrategyGroup, TargetCondition
-from .synth import CITIES
+from ..models import SearchMode, StrategyGroup
+from ..qualification.criteria import detect_city
+from .people_strategy import build_people_strategy_groups
 
-# 与参考站一致的四色循环：violet / orange / sky / emerald
+# 与参考站一致的四色循环：violet / orange / sky / emerald。
+# 条件条目的色条由后端统一下发，避免前后端各写一份色表后逐渐漂移。
 CONDITION_COLORS: tuple[str, ...] = ("#8b5cf6", "#fb923c", "#0ea5e9", "#10b981")
 
 _SEPARATORS: tuple[str, ...] = ("，", ",", "；", ";", "。", "、", "\n")
-
-MAX_CONDITION_COUNT = 4
 
 
 def split_query(text: str) -> list[str]:
@@ -29,38 +34,14 @@ def shorten(text: str, limit: int = 22) -> str:
     return stripped if len(stripped) <= limit else f"{stripped[:limit]}…"
 
 
-def detect_city(text: str) -> str | None:
-    return next((city for city in CITIES if city in text), None)
+def build_strategy_groups(query: str, mode: SearchMode = "company") -> list[StrategyGroup]:
+    """按检索模式分发：找人 6 组（`people_strategy`），会社 2 组（本模块）。"""
+    if mode == "people":
+        return build_people_strategy_groups(query)
+    return _build_company_strategy_groups(query)
 
 
-def conditions_from_texts(texts: list[str]) -> list[TargetCondition]:
-    """按顺序把条件文本包装成条目，颜色按位置循环分配。
-
-    保存配置时直接走这里，因此用户删掉的条件不会在保存后被重新补回来。
-    """
-    return [
-        TargetCondition(
-            id=f"condition-{index}",
-            text=text,
-            color=CONDITION_COLORS[index % len(CONDITION_COLORS)],
-        )
-        for index, text in enumerate(texts)
-    ]
-
-
-def build_conditions(query: str) -> list[TargetCondition]:
-    """把画像正文拆成展示用条件条目，单条保持简短，最多 4 条再补 2 条兜底规则。"""
-    texts = [shorten(item) for item in split_query(query) if item.strip()][:MAX_CONDITION_COUNT]
-
-    city = detect_city(query)
-    if city:
-        texts.append(f"优先选择在{city}的企业")
-    texts.append("补齐行业、规模与联系方式后再进入触达")
-
-    return conditions_from_texts(texts)
-
-
-def build_strategy_groups(query: str) -> list[StrategyGroup]:
+def _build_company_strategy_groups(query: str) -> list[StrategyGroup]:
     """生成两组挖掘策略：第一组解释核心诉求，第二组解释覆盖范围如何外扩。
 
     示例条目直接取自画像原文片段，因此用户改完「寻找对象」后策略说明会同步变化。

@@ -1,43 +1,62 @@
-"""企业详情页（详细档案 / 智能调研 / 准入条件评估）的虚拟内容生成。
+"""企业详情页的内容装配。
 
-全部内容按企业 ID 确定性生成，刷新页面后保持一致；不含任何真实第三方数据源。
+职责被收窄成「把已有数据翻译成接口模型」：
+
+- **准入条件评估**来自 L3 判定结果（`qualification.judge` / `judge_person`），
+  本模块只做格式转换。它不再自己随机生成结论——那是「为什么这家匹配」的答案，
+  必须与列表页的结论同源。
+- **References** 来自数据源返回的证据列表，因此接入真实数据源后会自动变成真实 URL。
+- 智能调研与触达说明仍是演示内容，等对应的爬虫能力接上后再替换。
+
+会社与人物两套装配函数**并列放在这里**而不是合并成一个：区块骨架相同，
+但证据来源、调研项与触达文案的依据字段都不一样（公司看官网，
+人物看职业档案），合并只会得到一堆 `if mode == ...`。
 """
 
 from __future__ import annotations
 
-import zlib
-
 from ..models import (
     ConditionEvaluation,
-    ConditionStatus,
     ReferenceItem,
     ResearchResult,
     TargetCompany,
-    TargetCondition,
+    TargetPerson,
 )
-
-_EVALUATION_STATUS: tuple[ConditionStatus, ...] = ("符合", "不确定", "不符合")
-
-_EXPLANATION_TEMPLATES: dict[ConditionStatus, str] = {
-    "符合": "公开资料显示其为{location}的{industry}企业，规模 {employees}，与该条件一致。",
-    "不确定": "仅能确认其{industry}经营范围，公开信息未出现与该条件对应的动作，暂无法确认。",
-    "不符合": "其业务集中在{industries}方向，公开信息中未见与该条件相关的内容。",
-}
+from ..providers import CompanyRecord, PersonRecord
+from ..qualification import Judgment
 
 
-def _seed_of(company: TargetCompany) -> int:
-    return zlib.crc32(company.id.encode()) % 100_000
+def build_references(company: TargetCompany, record: CompanyRecord | None) -> list[ReferenceItem]:
+    """详情页 References 区块。
+
+    优先用数据源给出的证据；没有证据时退回企业官网首页，
+    而不是编造一条看起来像证据的链接。
+    """
+    if record is not None and record.evidence:
+        return [ReferenceItem(title=item.title, url=item.url) for item in record.evidence]
+    return [ReferenceItem(title=f"{company.company_name}（官网首页）", url=f"https://{company.website}")]
 
 
-def build_references(company: TargetCompany) -> list[ReferenceItem]:
-    """详情页 References 区块。只引用企业自身的公开页面，不引用第三方站点。"""
-    domain = company.website
-    references = [
-        ReferenceItem(title=f"{company.company_name}（官网首页）", url=f"https://{domain}"),
+def build_evaluations(judgment: Judgment | None) -> list[ConditionEvaluation]:
+    """把逐条判定结果转成准入条件评估。
+
+    没有判定结果时返回空列表：**不生成占位结论**。详情页会因此少一个区块，
+    这比展示一条与列表页结论矛盾的假评估要好。
+    """
+    if judgment is None:
+        return []
+    return [
+        ConditionEvaluation(
+            condition=item.criterion.name,
+            status=item.verdict,
+            reference_count=item.reference_count,
+            explanation=item.explanation,
+            source_label=item.source_label,
+            source_url=item.source_url,
+            weight=item.criterion.weight,
+        )
+        for item in judgment.verdicts
     ]
-    if company.summary_state == "ready":
-        references.append(ReferenceItem(title=f"{company.company_name} · 业务介绍", url=f"https://{domain}/about"))
-    return references
 
 
 def build_research_results(company: TargetCompany) -> list[ResearchResult]:
@@ -71,40 +90,6 @@ def build_research_results(company: TargetCompany) -> list[ResearchResult]:
     ]
 
 
-def build_evaluations(
-    company: TargetCompany,
-    conditions: list[TargetCondition],
-) -> list[ConditionEvaluation]:
-    """逐条条件给出判定、参考数量、解释与来源。"""
-    seed = _seed_of(company)
-    industry = company.industries[0] if company.industries else "综合"
-
-    evaluations: list[ConditionEvaluation] = []
-    for index, condition in enumerate(conditions):
-        status = _EVALUATION_STATUS[(seed + index) % len(_EVALUATION_STATUS)]
-        if index == 0:
-            # 第一条条件通常就是行业画像，企业能出现在结果里说明它至少没跑偏
-            status = "符合"
-        explanation = _EXPLANATION_TEMPLATES[status].format(
-            location=company.location,
-            industry=industry,
-            employees=company.employees,
-            industries="、".join(company.industries),
-        )
-        reference_count = 2 if status == "符合" else 1
-        evaluations.append(
-            ConditionEvaluation(
-                condition=condition.text,
-                status=status,
-                reference_count=reference_count,
-                explanation=explanation,
-                source_label=f"官网 · {company.website}",
-                source_url=f"https://{company.website}",
-            )
-        )
-    return evaluations
-
-
 def build_outreach_note(company: TargetCompany, has_plan: bool) -> str:
     """智能触达区块的说明文案。没有触达计划时与参考站一致，给出占位提示。"""
     if not has_plan:
@@ -112,3 +97,63 @@ def build_outreach_note(company: TargetCompany, has_plan: bool) -> str:
     if company.contact_state != "ready" or company.contact_count == 0:
         return "该企业尚未挖掘到关键联系人，触达序列会停在第一封邮件。"
     return f"已纳入触达序列，首轮将面向 {company.contact_count} 位联系人按渠道顺序推进。"
+
+
+# ── 人物档案 ──────────────────────────────────────────────────────────────
+
+
+def build_person_references(person: TargetPerson, record: PersonRecord | None) -> list[ReferenceItem]:
+    """人物详情页 References 区块。
+
+    优先用数据源给出的证据（职业档案页 + 所属机构团队页）；没有证据时退回档案地址本身，
+    而不是编造一条看起来像证据的链接。
+    """
+    if record is not None and record.evidence:
+        return [ReferenceItem(title=item.title, url=item.url) for item in record.evidence]
+    if person.source_url:
+        return [ReferenceItem(title=f"{person.name} · {person.source_label or '公开档案'}", url=person.source_url)]
+    return []
+
+
+def build_person_research_results(person: TargetPerson) -> list[ResearchResult]:
+    """人物侧的智能调研。
+
+    只有两项，且与会社侧**不是同一套**：人物没有「企业关键联系人」这一层下钻
+    （他本人就是结果实体），换成「联系方式」与「档案完整度」。
+    """
+    reachable = person.contact_state == "ready" and person.contact_count > 0
+    complete = person.summary_state == "ready" and bool(person.title)
+
+    return [
+        ResearchResult(
+            key="person_contact",
+            title="联系方式挖掘",
+            state="ready" if reachable else "failed",
+            summary="已获取邮箱或电话" if reachable else "未找到结果",
+            evidence=(
+                [f"{person.source_label or '公开档案'}上可获知其现任职位与所属机构", "交叉核对了团队页的在职状态"]
+                if reachable
+                else ["档案页对爬虫返回访问受限", "公开渠道未出现可验证的邮箱或电话"]
+            ),
+        ),
+        ResearchResult(
+            key="profile_completeness",
+            title="档案完整度",
+            state="ready" if complete else "blocked",
+            summary="职位与归属齐备" if complete else "缺少职位或所属机构",
+            evidence=(
+                [f"档案给出了现任职位「{person.title}」", f"所属机构为{person.company or '未给出'}"]
+                if complete
+                else ["档案未给出职位", "无法确认其是否仍在职"]
+            ),
+        ),
+    ]
+
+
+def build_person_outreach_note(person: TargetPerson, has_plan: bool) -> str:
+    """人物侧的触达说明。口径与会社侧一致：没有计划就直说，有联系人就说清首轮面向谁。"""
+    if not has_plan:
+        return "当前未加载触达详情。"
+    if person.contact_state != "ready" or person.contact_count == 0:
+        return "该档案尚未取到可用的联系方式，触达序列会停在第一封邮件。"
+    return f"已纳入触达序列，首轮将面向 {person.name_local or person.name} 按渠道顺序推进。"

@@ -2,3 +2,7 @@ fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 python-multipart==0.0.20
+
+# 显式声明，虽然 uvicorn[standard] 也会带上它：
+# app.config 直接用 load_dotenv() 读 server/.env，换成不带 extra 的 uvicorn 就会断。
+python-dotenv==1.2.3

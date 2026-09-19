@@ -253,6 +253,78 @@
   }
 }
 
+// 加权标准条：让首页就能看出这批结果是被哪些维度圈出来的，权重以数字后缀标出
+.listCriteria {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: @space-1;
+}
+
+.criteriaLabel {
+  flex: none;
+  margin-right: @space-1;
+  font-size: 11px;
+  color: @color-text-tertiary;
+}
+
+// 标准引擎标签：与条件 chip 同排，用虚线边区分「这是元信息，不是一条标准」。
+// 它必须出现在列表页——降级是静默的，不标出来用户只会看到「标准变了」。
+.criteriaEngine {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  flex: none;
+  padding: 2px @space-2;
+  border: 1px dashed @color-border-strong;
+  border-radius: @radius-pill;
+  font-size: 11px;
+  color: @color-text-tertiary;
+  white-space: nowrap;
+}
+
+// 降级态：标准是兜底产出的，用警示色表明「本可以更好」。
+.criteriaEngineWarn {
+  border-color: @color-warning;
+  border-style: solid;
+  color: @color-warning-text;
+}
+
+.criteriaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  max-width: 260px;
+  padding: 2px @space-2;
+  border: 1px solid @color-border;
+  border-radius: @radius-pill;
+  background: @color-surface-muted;
+}
+
+.criteriaBar {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.criteriaText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: @color-text-secondary;
+}
+
+.criteriaWeight {
+  flex: none;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 600;
+  color: @color-accent;
+}
+
 .listPlan {
   font-size: @font-xs;
   color: @color-text-tertiary;

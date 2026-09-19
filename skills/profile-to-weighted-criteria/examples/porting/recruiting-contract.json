@@ -1,0 +1,67 @@
+{
+  "_readme": [
+    "招聘场景的契约变体——**示范「换领域要改什么」，不是可以直接替换的配置**。",
+    "把它当 contract.json 直接用会被一致性守卫拦下（见 porting/README.md 的实测输出），",
+    "因为规则引擎那边的 _LLM_CATEGORIES / _MAX_PER_CATEGORY / CATEGORY_WEIGHTS 还是一组 B2B 的表。",
+    "本文件里列的 tokens_hint / expected_hint 会被渲染进 system 提示词的契约表，",
+    "所以改完这里，提示词会自动跟着变（这正是 contract.json 作为唯一真源的意义）。"
+  ],
+  "version": "criteria/recruiting-v1",
+  "min_criteria": 2,
+  "max_criteria": 8,
+  "categories": [
+    {
+      "name": "city",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "text",
+      "tokens_hint": "城市名数组，如 [\"杭州\"]",
+      "expected_hint": "城市或区域名，如 \"杭州\""
+    },
+    {
+      "name": "function",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "text",
+      "tokens_hint": "职能关键词数组，如 [\"后端\",\"服务端\",\"Java\"]",
+      "expected_hint": "职能名称，如 \"后端开发\""
+    },
+    {
+      "name": "experience",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "range",
+      "tokens_must_be_empty": true,
+      "tokens_hint": "必须是空数组 []",
+      "expected_hint": "**必须是 \"最小年限:最大年限\" 两个整数用英文冒号连接**，如 \"3:5\""
+    },
+    {
+      "name": "education",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "enum",
+      "enum_values": ["不限", "大专", "本科", "硕士", "博士"],
+      "tokens_hint": "学历数组，如 [\"本科\"]",
+      "expected_hint": "**必须是「$enum_values」之一**"
+    },
+    {
+      "name": "skill",
+      "max": 3,
+      "lenient": true,
+      "expected_kind": "empty",
+      "tokens_hint": "技能关键词数组，如 [\"Go\",\"Kubernetes\",\"分布式\"]",
+      "expected_hint": "必须是空字符串 \"\""
+    },
+    {
+      "name": "signal",
+      "max": 3,
+      "lenient": true,
+      "expected_kind": "empty",
+      "tokens_hint": "求职信号关键词数组，如 [\"在职看机会\",\"可到岗\"]",
+      "expected_hint": "必须是空字符串 \"\""
+    }
+  ],
+  "excluded_categories": {
+    "contactability": "与画像内容无关，任何画像都适用，由代码统一补，不让模型自作主张"
+  }
+}

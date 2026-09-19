@@ -1,0 +1,12 @@
+{
+  "_note": "用户条件被完整纳入，但代码后处理有 3 个缺陷（见 _issues）",
+  "_issues": ["极性反转：「不接受人力外包」里的「外包」被并进正向行业词表 → 外包公司反而「符合」w5 硬性标准", "整句当 token：tokens=[\"必须是一年内新成立的公司\"]，永不命中，校验器也拦不住", "契约无否定语义：命中即「符合」，真实含义只能写进 note，而判定器不读 note"],
+  "profile": "北京的 SaaS 企业服务公司",
+  "user_conditions": ["必须是一年内新成立的公司", "不接受人力外包型公司"],
+  "criteria": [
+    {"category": "geo", "name": "地域：北京", "question": "公司注册地或总部是否位于北京？", "weight": 5, "tokens": ["北京"], "expected": "北京", "lenient": false, "note": "以工商注册地址或官网联系地址判定"},
+    {"category": "industry", "name": "行业：企业服务与SaaS", "question": "公司主营业务是否为 SaaS 或企业级软件服务？", "weight": 5, "tokens": ["SaaS", "saas", "企业服务", "企业级服务", "软件服务", "云服务"], "expected": "企业服务与软件", "lenient": false, "note": "以官网产品介绍、经营范围关键词判定"},
+    {"category": "business", "name": "成立时间：一年内新成立", "question": "公司注册成立时间是否在最近一年以内？", "weight": 3, "tokens": ["成立时间", "注册时间", "成立日期"], "expected": "", "lenient": true, "note": "需带时间戳的工商注册日期数据，距今不超过 12 个月"},
+    {"category": "business", "name": "业务模式：非人力外包", "question": "公开资料是否显示公司主营人力外包、劳务派遣等外包型业务？", "weight": 3, "tokens": ["人力外包", "人员外包", "劳务派遣", "人力资源外包", "外包服务"], "expected": "", "lenient": true, "note": "命中上述关键词即判定为非目标客户，予以排除"}
+  ]
+}
