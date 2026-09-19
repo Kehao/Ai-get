@@ -1,7 +1,7 @@
 """渠道连接仓库。
 
-套餐相关的解锁判断在这里完成：免费版可直接连接邮箱渠道，
-社媒渠道返回明确的升级提示，而不是静默失败。
+渠道状态只有三种：可连接、已连接、即将支持。渠道之间不做任何能力门槛判断，
+能否连接完全取决于状态本身。
 """
 
 from __future__ import annotations
@@ -20,10 +20,9 @@ class ChannelRepository:
             channel.id: channel.model_copy()
             for channel in (EMAIL_CHANNEL, *SOCIAL_CHANNELS, *COMING_SOON_CHANNELS)
         }
-        self._channels[EMAIL_CHANNEL.id].state = "available"
         self._lock = threading.RLock()
 
-    def page(self, plan_name: str) -> ConnectPage:
+    def page(self) -> ConnectPage:
         with self._lock:
             grouped = [
                 ChannelGroup(
@@ -36,7 +35,6 @@ class ChannelRepository:
             social_channels = [item for item in self._channels.values() if item.group == "社媒渠道"]
             return ConnectPage(
                 summary=ConnectSummary(
-                    plan_name=plan_name,
                     connected_email=sum(1 for item in email_channels if item.state == "connected"),
                     total_email=len(email_channels),
                     connected_social=sum(1 for item in social_channels if item.state == "connected"),
@@ -50,8 +48,6 @@ class ChannelRepository:
             channel = self._require(channel_id)
             if channel.state == "coming_soon":
                 raise ValueError(f"{channel.name} 渠道即将支持，暂时无法连接")
-            if channel.state == "locked":
-                raise ValueError(f"{channel.name} 需要升级到 {channel.required_plan} 套餐后才能连接")
             channel.state = "connected"
             channel.account_label = account_label
             return channel

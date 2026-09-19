@@ -1,44 +1,58 @@
-// 潜客列表详情：数据表格 + 右侧条件与挖掘进度面板。
-// 表格列由后端下发（内置列 + 自定义富化列），工具栏提供筛选、排序、智能触达与新增调研列。
+// 潜客列表详情：数据表格 + 右侧「挖掘 / 详情」双面板。
+// 挖掘面板负责编辑寻找对象与判断条件、解释挖掘策略、查看并追加进度；
+// 点击表格任意一行后切到详情面板，展示该企业的完整档案与准入条件评估。
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowUpDown,
-  Download,
   Filter,
+  Globe,
   Info,
+  Link2,
+  ListChecks,
   MoreHorizontal,
+  PanelRight,
+  Plus,
   RefreshCw,
+  Search,
   Send,
   Sparkles,
+  TrendingUp,
   UserPlus,
+  X,
 } from 'lucide-react';
 
 import * as agentsApi from '@/api/agents';
 import * as targetsApi from '@/api/targets';
-import type { Contact, TargetCompany, TargetList } from '@/api/types';
+import type { Contact, TargetCompany, TargetCondition, TargetList } from '@/api/types';
 import Button from '@/components/Button';
 import Dropdown from '@/components/Dropdown';
 import Modal from '@/components/Modal';
 import Pagination from '@/components/Pagination';
-import ProgressBar from '@/components/ProgressBar';
 import Spinner from '@/components/Spinner';
 import Tag, { type TagTone } from '@/components/Tag';
 import { useToast } from '@/components/Toast';
+import { CONDITION_COLORS } from '@/constants/targets';
 import { OUTREACH_CHANNELS } from '@/constants/channels';
 import { ROUTES } from '@/constants/routes';
 import { useAsync } from '@/hooks/useAsync';
-import { formatNumber, toDisplayDomain, toDomainInitial } from '@/utils/format';
+import { formatFullDateTime, formatNumber, toDisplayDomain, toDomainInitial } from '@/utils/format';
 
 import styles from './TargetDetailPage.module.less';
 
 const PAGE_SIZE = 20;
+const MORE_OPTIONS = [25, 100, 500, 1000];
 const MATCH_TONES: Record<string, TagTone> = {
   明确符合: 'success',
   可能符合: 'warning',
   待确认: 'neutral',
+};
+const EVAL_TONES: Record<string, string> = {
+  符合: 'evalMatch',
+  不确定: 'evalUnsure',
+  不符合: 'evalMiss',
 };
 const FILTER_OPTIONS = [
   { key: '', label: '全部结论' },
@@ -52,6 +66,9 @@ const SORT_OPTIONS = [
   { key: 'website', label: '按网址' },
 ];
 
+/** 本地新增的条件行需要一个临时 id，保存后由后端重新编号。 */
+const DRAFT_CONDITION_PREFIX = 'draft-condition';
+
 const TargetDetailPage = (): JSX.Element => {
   const { listId = '' } = useParams();
   const { showToast } = useToast();
@@ -60,6 +77,17 @@ const TargetDetailPage = (): JSX.Element => {
   const [keyword, setKeyword] = useState('');
   const [matchLevel, setMatchLevel] = useState('');
   const [sort, setSort] = useState('match');
+
+  const [panelTab, setPanelTab] = useState<'mining' | 'detail'>('mining');
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [activeRowId, setActiveRowId] = useState('');
+  const [evidenceTitle, setEvidenceTitle] = useState('');
+  const [evidenceItems, setEvidenceItems] = useState<string[]>([]);
+  const [moreCount, setMoreCount] = useState(MORE_OPTIONS[0]);
+
+  // 草稿为 null 时表示「跟随服务端数据」，保存成功后重置回 null 即可还原为未编辑状态
+  const [draftQuery, setDraftQuery] = useState<string | null>(null);
+  const [draftConditions, setDraftConditions] = useState<TargetCondition[] | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [contactsRow, setContactsRow] = useState<TargetCompany | null>(null);
@@ -81,6 +109,10 @@ const TargetDetailPage = (): JSX.Element => {
     },
   );
   const agents = useAsync(() => agentsApi.readAgents());
+  const companyDetail = useAsync(
+    () => (activeRowId === '' ? Promise.resolve(null) : targetsApi.readCompanyDetail(listId, activeRowId)),
+    { deps: [listId, activeRowId] },
+  );
 
   // 查询参数变化后清空选择，避免选中项与当前页数据不一致
   useEffect(() => setSelectedIds([]), [listId, page, keyword, matchLevel, sort]);
@@ -97,6 +129,16 @@ const TargetDetailPage = (): JSX.Element => {
   useEffect(() => {
     setAgentName((current) => current || defaultAgentName);
   }, [defaultAgentName]);
+
+  const serverConditions = useMemo(() => targetList?.condition_items ?? [], [targetList]);
+  const conditions = draftConditions ?? serverConditions;
+  const queryText = draftQuery ?? targetList?.query ?? '';
+  const strategyGroups = targetList?.strategy_groups ?? [];
+  const configDirty =
+    targetList !== null &&
+    (queryText.trim() !== targetList.query ||
+      conditions.map((item) => item.text.trim()).join('|') !==
+        serverConditions.map((item) => item.text.trim()).join('|'));
 
   const openContacts = async (row: TargetCompany): Promise<void> => {
     setContactsRow(row);
@@ -116,8 +158,83 @@ const TargetDetailPage = (): JSX.Element => {
       await targetsApi.retryField(listId, row.id, field);
       showToast('已重新富化该字段', 'success');
       detail.reload();
+      companyDetail.reload();
     } catch (caught) {
       showToast(caught instanceof Error ? caught.message : '重新富化失败', 'error');
+    }
+  };
+
+  const selectRow = (rowId: string): void => {
+    setActiveRowId(rowId);
+    setPanelTab('detail');
+    setPanelOpen(true);
+  };
+
+  const resetDrafts = (): void => {
+    setDraftQuery(null);
+    setDraftConditions(null);
+  };
+
+  const updateConditionText = (conditionId: string, text: string): void => {
+    setDraftConditions(conditions.map((item) => (item.id === conditionId ? { ...item, text } : item)));
+  };
+
+  const addCondition = (): void => {
+    setDraftConditions([
+      ...conditions,
+      {
+        id: `${DRAFT_CONDITION_PREFIX}-${conditions.length}-${Date.now()}`,
+        text: '',
+        color: CONDITION_COLORS[conditions.length % CONDITION_COLORS.length],
+      },
+    ]);
+  };
+
+  const removeCondition = (conditionId: string): void => {
+    setDraftConditions(conditions.filter((item) => item.id !== conditionId));
+  };
+
+  /** 保存配置与开始挖掘共用：先落库再决定是否重跑。 */
+  const persistConfig = async (): Promise<boolean> => {
+    const texts = conditions.map((item) => item.text.trim()).filter((text) => text !== '');
+    if (texts.length === 0) {
+      showToast('至少需要保留一条判断条件', 'error');
+      return false;
+    }
+    await targetsApi.updateConditions(listId, { query: queryText, conditions: texts });
+    resetDrafts();
+    return true;
+  };
+
+  const saveConfig = async (): Promise<void> => {
+    setBusy(true);
+    try {
+      if (await persistConfig()) {
+        showToast('挖掘配置已保存', 'success');
+        detail.reload();
+      }
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : '保存配置失败', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startMining = async (): Promise<void> => {
+    setBusy(true);
+    try {
+      if (!(await persistConfig())) {
+        return;
+      }
+      await targetsApi.remine(listId);
+      setActiveRowId('');
+      setPanelTab('mining');
+      showToast('已按最新配置重新开始挖掘', 'success');
+      detail.reload();
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : '重新挖掘失败', 'error');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -148,6 +265,7 @@ const TargetDetailPage = (): JSX.Element => {
       showToast(`智能触达计划已创建，共 ${plan.steps.length} 个触点`, 'success');
       setOutreachOpen(false);
       detail.reload();
+      companyDetail.reload();
     } catch (caught) {
       showToast(caught instanceof Error ? caught.message : '创建触达计划失败', 'error');
     } finally {
@@ -214,6 +332,7 @@ const TargetDetailPage = (): JSX.Element => {
   }
 
   const running = targetList.status === 'running';
+  const dossier = companyDetail.data;
 
   return (
     <div className={styles.page}>
@@ -265,8 +384,11 @@ const TargetDetailPage = (): JSX.Element => {
           <Dropdown
             align="end"
             panelWidth={180}
-            items={[{ key: 'refresh', label: '刷新数据' }]}
-            onSelect={() => detail.reload()}
+            items={[
+              { key: 'refresh', label: '刷新数据' },
+              { key: 'export', label: '导出当前页 CSV' },
+            ]}
+            onSelect={(key) => (key === 'export' ? exportCsv() : detail.reload())}
             trigger={({ open }) => (
               <button type="button" className={[styles.toolButton, open ? styles.toolButtonOpen : ''].filter(Boolean).join(' ')}>
                 <MoreHorizontal size={15} />
@@ -274,11 +396,6 @@ const TargetDetailPage = (): JSX.Element => {
               </button>
             )}
           />
-
-          <button type="button" className={styles.toolButton} onClick={exportCsv}>
-            <Download size={15} />
-            导出
-          </button>
 
           <Button
             variant="outline"
@@ -303,6 +420,7 @@ const TargetDetailPage = (): JSX.Element => {
                   <th className={styles.checkCell}>
                     <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="全选当前页" />
                   </th>
+                  <th className={styles.indexCell} aria-label="序号" />
                   <th>所属公司</th>
                   <th>网址</th>
                   <th>行业</th>
@@ -322,9 +440,13 @@ const TargetDetailPage = (): JSX.Element => {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className={styles.checkCell}>
+                {rows.map((row, index) => (
+                  <tr
+                    key={row.id}
+                    className={[styles.row, row.id === activeRowId ? styles.rowActive : ''].filter(Boolean).join(' ')}
+                    onClick={() => selectRow(row.id)}
+                  >
+                    <td className={styles.checkCell} onClick={(event) => event.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(row.id)}
@@ -332,6 +454,7 @@ const TargetDetailPage = (): JSX.Element => {
                         aria-label={`选择 ${row.company_name}`}
                       />
                     </td>
+                    <td className={styles.indexCell}>{(page - 1) * PAGE_SIZE + index + 1}</td>
                     <td>
                       <div className={styles.companyCell}>
                         <span className={styles.companyMark}>{toDomainInitial(row.website)}</span>
@@ -341,13 +464,14 @@ const TargetDetailPage = (): JSX.Element => {
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td onClick={(event) => event.stopPropagation()}>
                       <a
                         className={styles.website}
                         href={`https://${toDisplayDomain(row.website)}`}
                         target="_blank"
                         rel="noreferrer"
                       >
+                        <Globe size={12} />
                         {toDisplayDomain(row.website)}
                       </a>
                     </td>
@@ -364,7 +488,14 @@ const TargetDetailPage = (): JSX.Element => {
                       {row.summary_state === 'ready' ? (
                         <p className={styles.summaryText}>{row.ai_summary}</p>
                       ) : (
-                        <button type="button" className={styles.retryButton} onClick={() => void retryField(row, 'summary')}>
+                        <button
+                          type="button"
+                          className={styles.retryButton}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void retryField(row, 'summary');
+                          }}
+                        >
                           <RefreshCw size={13} />
                           重试生成摘要
                         </button>
@@ -373,7 +504,7 @@ const TargetDetailPage = (): JSX.Element => {
                     <td>
                       <Tag tone={MATCH_TONES[row.match_level] ?? 'neutral'}>{row.match_level}</Tag>
                     </td>
-                    <td>
+                    <td onClick={(event) => event.stopPropagation()}>
                       {row.contact_state === 'ready' ? (
                         <button type="button" className={styles.contactButton} onClick={() => void openContacts(row)}>
                           {row.contact_count} 人
@@ -385,7 +516,7 @@ const TargetDetailPage = (): JSX.Element => {
                         </button>
                       )}
                     </td>
-                    <td>
+                    <td onClick={(event) => event.stopPropagation()}>
                       {row.official_contact_state === 'blocked' ? (
                         <button
                           type="button"
@@ -405,7 +536,15 @@ const TargetDetailPage = (): JSX.Element => {
                       </td>
                     ))}
                     <td className={styles.actionCell}>
-                      <button type="button" className={styles.rowAction} onClick={() => void openContacts(row)}>
+                      <button
+                        type="button"
+                        className={styles.rowAction}
+                        aria-label={`查看 ${row.company_name} 详情`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          selectRow(row.id);
+                        }}
+                      >
                         <Info size={14} />
                       </button>
                     </td>
@@ -435,67 +574,352 @@ const TargetDetailPage = (): JSX.Element => {
           </footer>
         </section>
 
-        <aside className={styles.panel}>
-          <div className={styles.panelTabs}>
-            <span className={styles.panelTabActive}>挖掘</span>
-            <span className={styles.panelTab}>详情</span>
-          </div>
-
-          <section className={styles.panelSection}>
-            <header className={styles.panelHeader}>
-              <span className={styles.panelIcon}>📌</span>
-              <h3>条件</h3>
-            </header>
-            <div className={styles.conditionList}>
-              {targetList.conditions.map((condition) => (
-                <span key={condition} className={styles.condition}>
-                  {condition}
-                </span>
-              ))}
-            </div>
-          </section>
-
-          <section className={styles.panelSection}>
-            <header className={styles.panelHeader}>
-              <span className={styles.panelIcon}>📈</span>
-              <h3>挖掘进度</h3>
-              <span className={styles.progressValue}>
-                {targetList.discovered_count} / {targetList.requested_count}
-              </span>
-            </header>
-            <ProgressBar value={targetList.progress} tone={running ? 'primary' : 'success'} />
-            <p className={styles.progressHint}>
-              {running ? '正在实时检索匹配企业并富化字段…' : '本轮挖掘已完成，可继续追加更多结果。'}
-            </p>
-
-            <div className={styles.moreButtons}>
-              {[25, 100, 500, 1000].map((value) => (
+        <aside className={[styles.panel, panelOpen ? '' : styles.panelCollapsed].filter(Boolean).join(' ')}>
+          {panelOpen ? (
+            <>
+              <div className={styles.panelTabs}>
+                <div className={styles.tabGroup}>
+                  <button
+                    type="button"
+                    className={panelTab === 'mining' ? styles.panelTabActive : styles.panelTab}
+                    onClick={() => setPanelTab('mining')}
+                  >
+                    挖掘
+                  </button>
+                  <button
+                    type="button"
+                    className={panelTab === 'detail' ? styles.panelTabActive : styles.panelTab}
+                    onClick={() => setPanelTab('detail')}
+                  >
+                    详情
+                  </button>
+                </div>
                 <button
-                  key={value}
                   type="button"
-                  className={styles.moreChip}
-                  disabled={busy}
-                  onClick={() => void addMore(value)}
+                  className={styles.panelToggle}
+                  onClick={() => setPanelOpen(false)}
+                  aria-label="收起右侧面板"
                 >
-                  {value}
+                  <PanelRight size={15} />
                 </button>
-              ))}
-            </div>
+              </div>
 
-            <Button variant="gradient" block loading={busy} onClick={() => void addMore(25)}>
-              挖掘更多
-            </Button>
-          </section>
+              {panelTab === 'mining' ? (
+                <div className={styles.panelBody}>
+                  <section className={styles.card}>
+                    <header className={styles.cardHeader}>
+                      <span className={styles.cardIcon}>
+                        <ListChecks size={14} />
+                      </span>
+                      <h3 className={styles.cardTitle}>条件</h3>
+                      <span className={styles.cardHint}>寻找对象</span>
+                    </header>
 
-          <section className={styles.panelSection}>
-            <header className={styles.panelHeader}>
-              <span className={styles.panelIcon}>🎯</span>
-              <h3>跟进计划</h3>
-            </header>
-            <p className={styles.progressHint}>{targetList.follow_up_plan ?? '暂无跟进计划，可先创建智能触达。'}</p>
-          </section>
+                    <textarea
+                      className={styles.queryInput}
+                      value={queryText}
+                      rows={3}
+                      placeholder="用一段话描述你要找的企业，例如：杭州的消费品与旅游行业小微商家…"
+                      onChange={(event) => setDraftQuery(event.target.value)}
+                    />
+
+                    <div className={styles.conditionList}>
+                      {conditions.map((condition) => (
+                        <div key={condition.id} className={styles.conditionRow}>
+                          <span className={styles.conditionBar} style={{ background: condition.color }} />
+                          <input
+                            className={styles.conditionInput}
+                            value={condition.text}
+                            placeholder="输入判断条件"
+                            onChange={(event) => updateConditionText(condition.id, event.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className={styles.conditionRemove}
+                            onClick={() => removeCondition(condition.id)}
+                            aria-label={`删除条件：${condition.text || '未填写'}`}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className={styles.conditionActions}>
+                      <button type="button" className={styles.textButton} onClick={addCondition}>
+                        <Plus size={12} />
+                        增加判断条件
+                      </button>
+                      <button type="button" className={styles.textButtonMuted} disabled title="排除名单暂未开放">
+                        排除名单
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.saveButton}
+                        disabled={!configDirty || busy}
+                        onClick={() => void saveConfig()}
+                      >
+                        保存配置
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={styles.mineButton}
+                      disabled={!configDirty || busy}
+                      title={configDirty ? undefined : '配置未改动，先调整寻找对象或判断条件'}
+                      onClick={() => void startMining()}
+                    >
+                      <Search size={15} />
+                      开始挖掘
+                    </button>
+                    {configDirty ? null : (
+                      <p className={styles.configHint}>当前配置与已保存的一致，改动后即可重新挖掘。</p>
+                    )}
+                  </section>
+
+                  {strategyGroups.length > 0 ? (
+                    <section className={styles.card}>
+                      <header className={styles.cardHeader}>
+                        <span className={styles.cardIcon}>
+                          <Search size={14} />
+                        </span>
+                        <h3 className={styles.cardTitle}>挖掘策略</h3>
+                        <span className={styles.cardBadge}>{strategyGroups.length}组</span>
+                      </header>
+
+                      <div className={styles.strategyList}>
+                        {strategyGroups.map((group) => (
+                          <article key={group.id} className={styles.strategyGroup}>
+                            <h4 className={styles.strategyTitle}>
+                              <span className={styles.strategyDot} />
+                              {group.title}
+                            </h4>
+                            <p className={styles.strategyDesc}>{group.description}</p>
+                            <ul className={styles.strategyExamples}>
+                              {group.examples.map((example) => (
+                                <li key={example}>
+                                  <Search size={11} />
+                                  {example}
+                                </li>
+                              ))}
+                            </ul>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  <section className={[styles.card, styles.progressCard].filter(Boolean).join(' ')}>
+                    <header className={styles.cardHeader}>
+                      <span className={styles.cardIcon}>
+                        <TrendingUp size={14} />
+                      </span>
+                      <h3 className={styles.cardTitle}>挖掘进度</h3>
+                      <span className={styles.progressValue}>
+                        <strong>{formatNumber(targetList.discovered_count)}</strong>
+                        <i>/</i>
+                        {formatNumber(targetList.requested_count)}
+                      </span>
+                    </header>
+
+                    <div className={styles.progressTrack}>
+                      <div className={styles.progressFill} style={{ width: `${targetList.progress}%` }} />
+                    </div>
+                    <p className={styles.progressHint}>
+                      {running ? '正在实时检索匹配企业并富化字段…' : '本轮挖掘已完成，可继续追加更多结果。'}
+                    </p>
+
+                    <div className={styles.moreButtons}>
+                      {MORE_OPTIONS.map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className={value === moreCount ? styles.moreChipActive : styles.moreChip}
+                          onClick={() => setMoreCount(value)}
+                        >
+                          {value}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      className={styles.moreButton}
+                      disabled={busy}
+                      onClick={() => void addMore(moreCount)}
+                    >
+                      挖掘更多
+                    </button>
+                  </section>
+                </div>
+              ) : (
+                <div className={styles.panelBody}>
+                  {activeRowId === '' ? (
+                    <p className={styles.dossierEmpty}>点击左侧任意一行企业，查看它的详细档案与准入条件评估。</p>
+                  ) : companyDetail.loading && dossier === null ? (
+                    <div className={styles.dossierLoading}>
+                      <Spinner size={18} />
+                      <span>正在读取详细档案…</span>
+                    </div>
+                  ) : dossier === null ? (
+                    <p className={styles.dossierEmpty}>{companyDetail.error ?? '未能读取该企业的详细档案。'}</p>
+                  ) : (
+                    <div className={styles.dossier}>
+                      <header className={styles.dossierHead}>
+                        <span className={styles.dossierLabel}>详细档案</span>
+                        <h3 className={styles.dossierName}>{dossier.company.company_name}</h3>
+                        <span className={styles.dossierBadge}>company</span>
+                        <a
+                          className={styles.dossierLink}
+                          href={`https://${toDisplayDomain(dossier.company.website)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Link2 size={11} />
+                          {toDisplayDomain(dossier.company.website)}
+                        </a>
+                      </header>
+
+                      <section className={styles.dossierBlock}>
+                        <span className={styles.blockLabel}>AI 摘要</span>
+                        <p className={styles.blockText}>
+                          {dossier.company.ai_summary || '摘要尚未生成，可在表格中对该字段发起重新富化。'}
+                        </p>
+                      </section>
+
+                      <section className={styles.dossierBlock}>
+                        <span className={styles.blockLabel}>智能触达</span>
+                        <p className={styles.blockText}>{dossier.outreach_note}</p>
+                        {dossier.outreach === null ? null : (
+                          <p className={styles.blockMeta}>
+                            {dossier.outreach.agent_name} · {dossier.outreach.channel} ·{' '}
+                            {dossier.outreach.steps.length} 个触点
+                          </p>
+                        )}
+                      </section>
+
+                      <section className={styles.dossierBlock}>
+                        <span className={styles.blockLabel}>References · {dossier.references.length}</span>
+                        <ul className={styles.referenceList}>
+                          {dossier.references.map((item) => (
+                            <li key={item.url}>
+                              <span className={styles.referenceTitle}>{item.title}</span>
+                              <a className={styles.referenceLink} href={item.url} target="_blank" rel="noreferrer">
+                                <Link2 size={10} />
+                                {toDisplayDomain(item.url)}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+
+                      <dl className={styles.infoBlock}>
+                        <div>
+                          <dt>名称</dt>
+                          <dd>{dossier.company.company_name}</dd>
+                        </div>
+                        <div>
+                          <dt>行业</dt>
+                          <dd>{dossier.company.industries.join('、')}</dd>
+                        </div>
+                        <div>
+                          <dt>地区</dt>
+                          <dd>{dossier.company.location}</dd>
+                        </div>
+                        <div>
+                          <dt>规模</dt>
+                          <dd>{dossier.company.employees} · {dossier.company.funding_stage}</dd>
+                        </div>
+                        <div>
+                          <dt>创建时间</dt>
+                          <dd>{formatFullDateTime(dossier.company.created_at)}</dd>
+                        </div>
+                      </dl>
+
+                      <section className={styles.dossierBlock}>
+                        <span className={styles.blockLabel}>智能调研</span>
+                        <ul className={styles.researchList}>
+                          {dossier.research_results.map((result) => (
+                            <li key={result.key} className={styles.researchItem}>
+                              <strong className={styles.researchTitle}>{result.title}</strong>
+                              <span
+                                className={
+                                  result.state === 'ready' ? styles.researchSummaryReady : styles.researchSummaryEmpty
+                                }
+                              >
+                                {result.summary}
+                              </span>
+                              <button
+                                type="button"
+                                className={styles.evidenceButton}
+                                onClick={() => {
+                                  setEvidenceTitle(result.title);
+                                  setEvidenceItems(result.evidence);
+                                }}
+                              >
+                                查看依据
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+
+                      <section className={styles.dossierBlock}>
+                        <span className={styles.blockLabel}>准入条件评估</span>
+                        <ul className={styles.evalList}>
+                          {dossier.evaluations.map((item) => (
+                            <li key={item.condition} className={styles.evalItem}>
+                              <div className={styles.evalHead}>
+                                <strong className={styles.evalCondition}>{item.condition}</strong>
+                                <span className={styles[EVAL_TONES[item.status] ?? 'evalUnsure']}>{item.status}</span>
+                                <span className={styles.evalRef}>参考 {item.reference_count}</span>
+                              </div>
+                              <p className={styles.evalText}>{item.explanation}</p>
+                              <a className={styles.evalSource} href={item.source_url} target="_blank" rel="noreferrer">
+                                <Link2 size={10} />
+                                {item.source_label}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <button
+              type="button"
+              className={styles.panelToggle}
+              onClick={() => setPanelOpen(true)}
+              aria-label="展开右侧面板"
+            >
+              <PanelRight size={15} />
+            </button>
+          )}
         </aside>
       </div>
+
+      <Modal
+        open={evidenceTitle !== ''}
+        title={`${evidenceTitle} · 依据`}
+        description="以下为本次挖掘命中的公开信息线索。"
+        width={520}
+        onClose={() => setEvidenceTitle('')}
+        footer={
+          <Button variant="outline" onClick={() => setEvidenceTitle('')}>
+            关闭
+          </Button>
+        }
+      >
+        <ul className={styles.evidenceList}>
+          {evidenceItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </Modal>
 
       <Modal
         open={contactsRow !== null}

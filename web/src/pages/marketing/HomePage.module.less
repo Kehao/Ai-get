@@ -418,96 +418,11 @@
   color: #f59e0b;
 }
 
-// ── 定价 ──────────────────────────────────────────────────────────────────
-.planGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: @space-5;
-  max-width: @content-width;
-  margin: 0 auto;
-}
-
-.planCard {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: @space-3;
-  padding: @space-6;
-  border-radius: @radius-lg;
-  background: @color-surface;
-  border: 1px solid @color-border;
-}
-
-.planCardHighlight {
-  border-color: @color-primary-border;
-  box-shadow: @shadow-md;
-}
-
-.planBadge {
-  position: absolute;
-  top: -@space-3;
-  right: @space-5;
-  padding: 2px @space-3;
-  border-radius: @radius-pill;
-  background: @gradient-primary;
-  color: @color-text-inverse;
-  font-size: @font-xs;
-}
-
-.planName {
-  font-size: @font-lg;
-  font-weight: 600;
-}
-
-.planPrice {
-  display: flex;
-  align-items: baseline;
-  gap: @space-1;
-
-  strong {
-    font-size: @font-3xl;
-    font-weight: 700;
-  }
-
-  span {
-    font-size: @font-sm;
-    color: @color-text-tertiary;
-  }
-}
-
-.planDescription {
-  font-size: @font-sm;
-  color: @color-text-secondary;
-}
-
-.planFeatures {
-  display: flex;
-  flex-direction: column;
-  gap: @space-2;
-  margin: @space-2 0 @space-3;
-  font-size: @font-sm;
-  color: @color-text-secondary;
-
-  li {
-    padding-left: @space-5;
-    position: relative;
-
-    &::before {
-      content: '✓';
-      position: absolute;
-      left: 0;
-      color: @color-success-text;
-      font-weight: 600;
-    }
-  }
-}
-
 // ── 响应式 ────────────────────────────────────────────────────────────────
 @media (max-width: 1024px) {
   .timeline,
   .featureGrid,
-  .testimonialGrid,
-  .planGrid {
+  .testimonialGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -523,8 +438,7 @@
 
   .timeline,
   .featureGrid,
-  .testimonialGrid,
-  .planGrid {
+  .testimonialGrid {
     grid-template-columns: minmax(0, 1fr);
   }
 

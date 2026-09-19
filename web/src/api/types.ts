@@ -4,7 +4,7 @@ export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
 export type FieldState = 'ready' | 'failed' | 'blocked';
 export type MatchLevel = '明确符合' | '可能符合' | '待确认';
 export type SearchMode = 'company' | 'people';
-export type ChannelState = 'available' | 'connected' | 'locked' | 'coming_soon';
+export type ChannelState = 'available' | 'connected' | 'coming_soon';
 export type OpportunityLevel = '建议跟进' | '初步信号' | '暂无信号';
 export type OpportunityRange = '7d' | '30d' | '12m';
 
@@ -12,7 +12,6 @@ export interface User {
   id: string;
   email: string;
   display_name: string;
-  plan_name: string;
 }
 
 export interface LoginResponse {
@@ -38,7 +37,19 @@ export interface Strategy {
 
 export interface CountOption {
   value: number;
-  is_free: boolean;
+}
+
+export interface TargetCondition {
+  id: string;
+  text: string;
+  color: string;
+}
+
+export interface StrategyGroup {
+  id: string;
+  title: string;
+  description: string;
+  examples: string[];
 }
 
 export interface TargetList {
@@ -50,7 +61,8 @@ export interface TargetList {
   requested_count: number;
   discovered_count: number;
   contact_count: number;
-  conditions: string[];
+  condition_items: TargetCondition[];
+  strategy_groups: StrategyGroup[];
   follow_up_plan: string | null;
   created_at: string;
   updated_at: string;
@@ -71,7 +83,46 @@ export interface TargetCompany {
   location: string;
   employees: string;
   funding_stage: string;
+  created_at: string;
   custom_values: Record<string, string>;
+}
+
+export interface ReferenceItem {
+  title: string;
+  url: string;
+}
+
+export type ConditionStatus = '符合' | '不确定' | '不符合';
+
+export interface ResearchResult {
+  key: 'contacts' | 'official_contact';
+  title: string;
+  state: FieldState;
+  summary: string;
+  evidence: string[];
+}
+
+export interface ConditionEvaluation {
+  condition: string;
+  status: ConditionStatus;
+  reference_count: number;
+  explanation: string;
+  source_label: string;
+  source_url: string;
+}
+
+export interface TargetCompanyDetail {
+  company: TargetCompany;
+  references: ReferenceItem[];
+  outreach_note: string;
+  outreach: OutreachPlan | null;
+  research_results: ResearchResult[];
+  evaluations: ConditionEvaluation[];
+}
+
+export interface UpdateConditionsPayload {
+  query?: string;
+  conditions: string[];
 }
 
 export interface TargetColumn {
@@ -217,7 +268,6 @@ export interface Channel {
   description: string;
   icon: string;
   state: ChannelState;
-  required_plan: string | null;
   account_label: string | null;
 }
 
@@ -227,7 +277,6 @@ export interface ChannelGroup {
 }
 
 export interface ConnectSummary {
-  plan_name: string;
   connected_email: number;
   total_email: number;
   connected_social: number;

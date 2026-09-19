@@ -19,8 +19,10 @@ from ..models import (
     Strategy,
     TargetColumn,
     TargetCompany,
+    TargetCompanyDetail,
     TargetList,
     TargetOverview,
+    UpdateConditionsRequest,
     UploadResult,
     User,
 )
@@ -125,6 +127,44 @@ def add_more(
     if updated is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="列表不存在")
     return updated
+
+
+@router.patch("/lists/{list_id}/conditions", response_model=TargetList)
+def update_conditions(
+    list_id: str,
+    payload: UpdateConditionsRequest,
+    user: User = Depends(current_user),
+) -> TargetList:
+    _require_list(list_id)
+    try:
+        updated = target_lists.update_conditions(list_id, payload.query, payload.conditions)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    if updated is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="列表不存在")
+    return updated
+
+
+@router.post("/lists/{list_id}/mine", response_model=TargetList)
+def remine(list_id: str, user: User = Depends(current_user)) -> TargetList:
+    _require_list(list_id)
+    updated = target_lists.remine(list_id)
+    if updated is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="列表不存在")
+    return updated
+
+
+@router.get("/lists/{list_id}/companies/{row_id}", response_model=TargetCompanyDetail)
+def read_company_detail(
+    list_id: str,
+    row_id: str,
+    user: User = Depends(current_user),
+) -> TargetCompanyDetail:
+    _require_list(list_id)
+    detail = target_lists.company_detail(list_id, row_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="企业记录不存在")
+    return detail
 
 
 @router.get("/lists/{list_id}/outreach", response_model=OutreachPlan | None)

@@ -88,18 +88,24 @@
 }
 
 .questionLabel {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
   font-size: @font-sm;
   color: @color-text-tertiary;
-}
 
-.questionRow {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: @space-2;
+  // 与「推荐策略」同一套写法：标签 + 一条贯穿到右缘的细线
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: @color-border;
+  }
 }
 
 .questionChip {
+  // 轨道是 flex 容器，不加 flex: none 的话中文会在任意字间断行、chip 被压扁而不是溢出滚动
+  flex: none;
   padding: 6px 14px;
   border: 1px solid @color-primary-border;
   border-radius: @radius-pill;

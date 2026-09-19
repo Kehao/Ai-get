@@ -7,6 +7,7 @@ import { Building2, MoreHorizontal, Sparkles, Upload, User, Users } from 'lucide
 import * as targetsApi from '@/api/targets';
 import type { TargetList } from '@/api/types';
 import Button from '@/components/Button';
+import ChipScroller from '@/components/ChipScroller';
 import Dropdown from '@/components/Dropdown';
 import SegmentedControl from '@/components/SegmentedControl';
 import Tag from '@/components/Tag';
@@ -58,12 +59,9 @@ const TargetsPage = (): JSX.Element => {
       (countOptions.data ?? []).map((option) => ({
         key: String(option.value),
         label: `${option.value} 条结果`,
-        description: option.is_free ? '免费版可用' : '需要升级套餐',
       })),
     [countOptions.data],
   );
-
-  const selectedOption = (countOptions.data ?? []).find((option) => option.value === count);
 
   const handleSubmit = async (): Promise<void> => {
     const trimmed = query.trim();
@@ -171,8 +169,7 @@ const TargetsPage = (): JSX.Element => {
                 trigger={({ open }) => (
                   <button type="button" className={[styles.countButton, open ? styles.countButtonOpen : ''].filter(Boolean).join(' ')}>
                     <span>{count}</span>
-                    <span className={styles.countDivider}>·</span>
-                    <span>{selectedOption?.is_free ? 'Free' : 'Pro'}</span>
+                    <span className={styles.countUnit}>条</span>
                   </button>
                 )}
               />
@@ -191,7 +188,7 @@ const TargetsPage = (): JSX.Element => {
 
         <div className={styles.strategyBlock}>
           <span className={styles.strategyLabel}>推荐策略</span>
-          <div className={styles.strategyRow}>
+          <ChipScroller>
             {(strategies.data ?? []).map((strategy) => (
               <button
                 key={strategy.id}
@@ -202,7 +199,7 @@ const TargetsPage = (): JSX.Element => {
                 {strategy.text}
               </button>
             ))}
-          </div>
+          </ChipScroller>
         </div>
       </section>
 

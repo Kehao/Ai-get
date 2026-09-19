@@ -82,7 +82,6 @@ const SettingsPage = (): JSX.Element => {
       (countOptions.data ?? []).map((option) => ({
         key: String(option.value),
         label: `${option.value} 条结果`,
-        description: option.is_free ? '免费版可用' : '需要升级套餐',
       })),
     [countOptions.data],
   );

@@ -45,9 +45,6 @@ const MarketingLayout = (): JSX.Element => {
             <a className={styles.navLink} href="#how">
               如何运作
             </a>
-            <a className={styles.navLink} href="#pricing">
-              定价
-            </a>
 
             <Dropdown
               align="start"

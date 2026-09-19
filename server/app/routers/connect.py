@@ -18,7 +18,7 @@ class ConnectRequest(BaseModel):
 
 @router.get("", response_model=ConnectPage)
 def read_channels(user: User = Depends(current_user)) -> ConnectPage:
-    return channels.page(user.plan_name)
+    return channels.page()
 
 
 @router.post("/{channel_id}/connect", response_model=Channel)

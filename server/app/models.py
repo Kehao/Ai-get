@@ -13,14 +13,15 @@ MatchLevel = Literal["明确符合", "可能符合", "待确认"]
 FieldState = Literal["ready", "failed", "blocked"]
 TaskStatus = Literal["pending", "running", "completed", "failed"]
 SearchMode = Literal["company", "people"]
-ChannelState = Literal["available", "connected", "locked", "coming_soon"]
+ChannelState = Literal["available", "connected", "coming_soon"]
+ConditionStatus = Literal["符合", "不确定", "不符合"]
+ResearchKey = Literal["contacts", "official_contact"]
 
 
 class User(BaseModel):
     id: str
     email: str
     display_name: str
-    plan_name: str
 
 
 class CredentialsRequest(BaseModel):
@@ -61,7 +62,23 @@ class Strategy(BaseModel):
 
 class CountOption(BaseModel):
     value: int
-    is_free: bool
+
+
+class TargetCondition(BaseModel):
+    """一条挖掘判断条件。color 是展示用的左侧色条，由后端下发保证前后端一致。"""
+
+    id: str
+    text: str
+    color: str
+
+
+class StrategyGroup(BaseModel):
+    """挖掘策略分组：给用户解释「这批结果是怎么被圈出来的」。"""
+
+    id: str
+    title: str
+    description: str
+    examples: list[str]
 
 
 class TargetList(BaseModel):
@@ -73,7 +90,8 @@ class TargetList(BaseModel):
     requested_count: int
     discovered_count: int
     contact_count: int
-    conditions: list[str]
+    condition_items: list[TargetCondition]
+    strategy_groups: list[StrategyGroup]
     follow_up_plan: str | None
     created_at: datetime
     updated_at: datetime
@@ -94,7 +112,34 @@ class TargetCompany(BaseModel):
     location: str
     employees: str
     funding_stage: str
+    created_at: datetime
     custom_values: dict[str, str] = Field(default_factory=dict)
+
+
+class ReferenceItem(BaseModel):
+    title: str
+    url: str
+
+
+class ResearchResult(BaseModel):
+    """智能调研的一个子任务结果，对应详情页「智能调研」区块的一行。"""
+
+    key: ResearchKey
+    title: str
+    state: FieldState
+    summary: str
+    evidence: list[str]
+
+
+class ConditionEvaluation(BaseModel):
+    """准入条件评估：某条条件在该企业上的判定结果与依据。"""
+
+    condition: str
+    status: ConditionStatus
+    reference_count: int
+    explanation: str
+    source_label: str
+    source_url: str
 
 
 class TargetColumn(BaseModel):
@@ -165,9 +210,25 @@ class OutreachPlan(BaseModel):
     created_at: datetime
 
 
+class TargetCompanyDetail(BaseModel):
+    company: TargetCompany
+    references: list[ReferenceItem]
+    outreach_note: str
+    outreach: OutreachPlan | None
+    research_results: list[ResearchResult]
+    evaluations: list[ConditionEvaluation]
+
+
 class CreateOutreachRequest(BaseModel):
     agent_name: str = Field(default="REVOR 默认销售智能体", max_length=60)
     channel: str = Field(default="邮件", max_length=20)
+
+
+class UpdateConditionsRequest(BaseModel):
+    """保存挖掘配置：寻找对象正文与该正文解析出的条件条目一起提交。"""
+
+    query: str | None = Field(default=None, max_length=2000)
+    conditions: list[str] = Field(default_factory=list)
 
 
 # ── 企业背调 ──────────────────────────────────────────────────────────────
@@ -258,7 +319,6 @@ class Channel(BaseModel):
     description: str
     icon: str
     state: ChannelState
-    required_plan: str | None
     account_label: str | None
 
 
@@ -268,7 +328,6 @@ class ChannelGroup(BaseModel):
 
 
 class ConnectSummary(BaseModel):
-    plan_name: str
     connected_email: int
     total_email: int
     connected_social: int

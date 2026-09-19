@@ -98,7 +98,7 @@
   background: @color-primary-soft;
 }
 
-.countDivider {
+.countUnit {
   color: @color-text-tertiary;
 }
 
@@ -110,16 +110,19 @@
 }
 
 .strategyLabel {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
   font-size: @font-sm;
   color: @color-text-tertiary;
-}
 
-.strategyRow {
-  display: flex;
-  gap: @space-2;
-  overflow-x: auto;
-  padding-bottom: @space-1;
-  .thin-scrollbar();
+  // 参考站此处是「标签 + 一条贯穿到右缘的细线」，与下方 chip 行一起框住这块内容
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: @color-border;
+  }
 }
 
 .strategyChip {

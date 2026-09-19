@@ -67,7 +67,7 @@ const SECTIONS: DocSection[] = [
         title: '训练智能体',
         detail: '可从系统模板创建，也可以完全自定义名称、图标、描述与渠道组合。',
       },
-      { title: '关联账号', detail: '邮箱渠道可直接连接；社媒渠道需要对应套餐，页面会明确提示所需版本。' },
+      { title: '关联账号', detail: '邮箱、LinkedIn 与 WhatsApp 均可直接连接；Instagram 与 Telegram 即将支持。' },
       {
         title: '知识库',
         detail: '把官网整理成问答集后，智能体在对话里会优先使用企业自身的表述，减少答非所问。',

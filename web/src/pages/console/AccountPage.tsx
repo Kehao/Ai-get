@@ -10,7 +10,6 @@ import * as researchApi from '@/api/research';
 import * as targetsApi from '@/api/targets';
 import EmptyState from '@/components/EmptyState';
 import Spinner from '@/components/Spinner';
-import Tag from '@/components/Tag';
 import { ROUTES } from '@/constants/routes';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/store/auth';
@@ -69,9 +68,6 @@ const AccountPage = (): JSX.Element => {
           <h1 className={styles.title}>{user.display_name}</h1>
           <p className={styles.subtitle}>{user.email}</p>
         </div>
-        <Tag tone="primary" size="md">
-          {user.plan_name}
-        </Tag>
       </header>
 
       <section className={styles.section}>

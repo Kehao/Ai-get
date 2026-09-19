@@ -39,6 +39,19 @@ export const formatDateTime = (isoText: string): string => {
   return `${formatDate(moment)} ${time}`;
 };
 
+/** 完整日期时间，用于详情页「创建时间 2026/09/16 00:22」。 */
+export const formatFullDateTime = (isoText: string): string => {
+  const moment = new Date(isoText);
+  if (Number.isNaN(moment.getTime())) {
+    return '';
+  }
+  const date = [moment.getFullYear(), moment.getMonth() + 1, moment.getDate()]
+    .map((part, index) => (index === 0 ? String(part) : String(part).padStart(2, '0')))
+    .join('/');
+  const time = `${String(moment.getHours()).padStart(2, '0')}:${String(moment.getMinutes()).padStart(2, '0')}`;
+  return `${date} ${time}`;
+};
+
 /** 千分位数字。 */
 export const formatNumber = (value: number): string => value.toLocaleString('zh-CN');
 

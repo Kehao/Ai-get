@@ -1,5 +1,5 @@
-// 登录页：结构与参考站一致（Google 入口、邮箱密码、忘记密码、注册引导）。
-// Google 登录在演示环境不可用，点击后给出明确提示而不是静默失败。
+// 登录页：邮箱密码登录，含忘记密码入口与注册引导。
+// 参考站另有 Google 入口，本项目不提供第三方登录，故此处不保留该按钮。
 
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -61,20 +61,6 @@ const SignInPage = (): JSX.Element => {
 
         <h1 className={styles.title}>登录</h1>
         <p className={styles.subtitle}>登录您的 Ai-get 账户</p>
-
-        <Button
-          variant="outline"
-          size="lg"
-          block
-          leadingIcon={<span aria-hidden>G</span>}
-          onClick={() => showToast('演示环境未接入 Google 登录，请使用邮箱登录', 'info')}
-        >
-          使用 Google 登录
-        </Button>
-
-        <div className={styles.divider}>
-          <span>或</span>
-        </div>
 
         <form className={styles.form} onSubmit={(event) => void handleSubmit(event)}>
           <label className={styles.field}>

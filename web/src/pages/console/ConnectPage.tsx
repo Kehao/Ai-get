@@ -1,5 +1,4 @@
 // 关联账号：把触达渠道连接到当前工作空间。
-// 套餐升级不在本次实现范围内，点击「升级」只给出明确提示。
 
 import { useState } from 'react';
 import {
@@ -9,7 +8,6 @@ import {
   MessageCircle,
   Plug,
   Send,
-  Sparkles,
   Unplug,
   type LucideIcon,
 } from 'lucide-react';
@@ -43,10 +41,6 @@ const ConnectPage = (): JSX.Element => {
 
   const page = useAsync(() => channelsApi.readChannels());
   const summary = page.data?.summary;
-
-  const handleUpgrade = (): void => {
-    showToast('演示环境未接入套餐购买流程，升级功能暂不可用', 'info');
-  };
 
   const openConnect = (channel: Channel): void => {
     setConnecting(channel);
@@ -129,18 +123,6 @@ const ConnectPage = (): JSX.Element => {
               连接
             </Button>
           ) : null}
-
-          {channel.state === 'locked' ? (
-            <>
-              <span className={styles.lockNote}>
-                <Tag tone="primary">{channel.required_plan ?? '付费版'}</Tag>
-                升级后解锁
-              </span>
-              <Button variant="outline" size="sm" leadingIcon={<Sparkles size={14} />} onClick={handleUpgrade}>
-                升级
-              </Button>
-            </>
-          ) : null}
         </div>
       </article>
     );
@@ -171,13 +153,6 @@ const ConnectPage = (): JSX.Element => {
           <h1 className={styles.title}>账号连接</h1>
           <p className={styles.subtitle}>连接 Ai-get 用于触达联系人的渠道。</p>
         </div>
-
-        <span className={styles.plan}>
-          {summary?.plan_name ?? '免费版'} 套餐
-        </span>
-        <Button variant="outline" size="sm" leadingIcon={<Sparkles size={14} />} onClick={handleUpgrade}>
-          升级
-        </Button>
       </header>
 
       <section className={styles.summaryRow}>

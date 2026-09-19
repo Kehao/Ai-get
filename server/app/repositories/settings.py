@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from datetime import datetime, timezone
 
-from ..config import DEFAULT_WORKSPACE_NAME, FREE_COMPANY_COUNT, OUTREACH_CHANNELS
+from ..config import DEFAULT_COMPANY_COUNT, DEFAULT_WORKSPACE_NAME, OUTREACH_CHANNELS
 from ..models import UpdateSettingsRequest, WorkspaceSettings
 
 
@@ -15,7 +15,7 @@ class SettingsRepository:
         self._settings = WorkspaceSettings(
             workspace_name=DEFAULT_WORKSPACE_NAME,
             default_channel=OUTREACH_CHANNELS[0],
-            default_count=FREE_COMPANY_COUNT,
+            default_count=DEFAULT_COMPANY_COUNT,
             notify_on_reply=True,
             notify_weekly_digest=False,
             updated_at=datetime.now(timezone.utc),

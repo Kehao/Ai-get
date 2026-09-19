@@ -1,9 +1,8 @@
-// 落地页：Hero、多渠道序列、核心功能、客户反馈、定价。
+// 落地页：Hero、多渠道序列、核心功能、客户反馈。
 // Hero 里的产品截图用纯样式还原控制台界面，避免依赖图片资源。
 
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowRight,
   Building2,
   Crosshair,
   Mail,
@@ -89,33 +88,6 @@ const TESTIMONIALS = [
     quote: '最有用的是每条线索都带匹配结论和背调摘要，销售不用再自己判断值不值得跟。',
     name: '周敏',
     role: '华东区销售总监',
-  },
-];
-
-const PLANS = [
-  {
-    name: '免费版',
-    price: '¥0',
-    unit: '/ 月',
-    description: '验证线索质量与触达效果',
-    features: ['潜客挖掘 25 条 / 次', '企业背调不限次数', '邮箱渠道连接', 'AI 摘要与匹配结论'],
-    highlight: false,
-  },
-  {
-    name: 'Starter',
-    price: '¥399',
-    unit: '/ 月',
-    description: '跑通第一条多渠道序列',
-    features: ['潜客挖掘 1000 条 / 次', '邮件渠道完整序列', '智能体训练与知识库', '商机洞察看板'],
-    highlight: true,
-  },
-  {
-    name: 'Scale',
-    price: '¥1,299',
-    unit: '/ 月',
-    description: '团队规模化 outbound',
-    features: ['LinkedIn 与 WhatsApp 渠道', '多智能体并行运行', 'CRM 线索同步', '自定义富化字段'],
-    highlight: false,
   },
 ];
 
@@ -263,43 +235,6 @@ const HomePage = (): JSX.Element => {
         </div>
       </section>
 
-      <section className={styles.sectionAlt} id="pricing">
-        <header className={styles.sectionHeader}>
-          <span className={styles.sectionEyebrow}>定价</span>
-          <h2 className={styles.sectionTitle}>从验证线索质量开始，按团队规模扩展</h2>
-          <p className={styles.sectionLead}>演示环境不接入支付，所有套餐能力均可直接体验。</p>
-        </header>
-
-        <div className={styles.planGrid}>
-          {PLANS.map((plan) => (
-            <article
-              key={plan.name}
-              className={[styles.planCard, plan.highlight ? styles.planCardHighlight : ''].filter(Boolean).join(' ')}
-            >
-              {plan.highlight ? <span className={styles.planBadge}>最受欢迎</span> : null}
-              <h3 className={styles.planName}>{plan.name}</h3>
-              <p className={styles.planPrice}>
-                <strong>{plan.price}</strong>
-                <span>{plan.unit}</span>
-              </p>
-              <p className={styles.planDescription}>{plan.description}</p>
-              <ul className={styles.planFeatures}>
-                {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
-                ))}
-              </ul>
-              <Button
-                variant={plan.highlight ? 'gradient' : 'outline'}
-                block
-                onClick={goConsole}
-                leadingIcon={<ArrowRight size={15} />}
-              >
-                免费开始
-              </Button>
-            </article>
-          ))}
-        </div>
-      </section>
     </div>
   );
 };

@@ -8,7 +8,6 @@ from __future__ import annotations
 import threading
 import uuid
 
-from ..config import DEFAULT_PLAN_NAME
 from ..models import User
 
 DEMO_EMAIL = "qiukehao388@126.com"
@@ -30,7 +29,6 @@ class UserRepository:
             id=f"user-{uuid.uuid4().hex[:8]}",
             email=email,
             display_name=display_name,
-            plan_name=DEFAULT_PLAN_NAME,
         )
         self._users[email] = user
         self._passwords[email] = password

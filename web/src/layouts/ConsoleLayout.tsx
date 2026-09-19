@@ -1,5 +1,5 @@
 // 控制台布局：可收起的侧边栏 + 内容区。
-// 按需求不实现积分与安装 Skill 模块，因此侧边栏底部只保留套餐标识与账号菜单。
+// 按需求不实现积分与安装 Skill 模块，因此侧边栏底部只保留账号菜单。
 
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -141,11 +141,8 @@ const ConsoleLayout = (): JSX.Element => {
         </div>
 
         <div className={styles.footer}>
-          {collapsed ? null : <span className={styles.planBadge}>{user?.plan_name ?? '免费版'}</span>}
-
           <AccountMenu
             email={user?.email ?? '未登录'}
-            planName={user?.plan_name ?? '免费版'}
             links={ACCOUNT_LINKS}
             collapsed={collapsed}
             onSignOut={() => void handleSignOut()}

@@ -38,14 +38,13 @@ export interface AccountMenuLink {
 
 interface AccountMenuProps {
   email: string;
-  planName: string;
   links: AccountMenuLink[];
   onSignOut: () => void;
   /** 侧边栏收起时只保留头像，菜单面板改为浮在右侧。 */
   collapsed?: boolean;
 }
 
-const AccountMenu = ({ email, planName, links, onSignOut, collapsed = false }: AccountMenuProps): JSX.Element => {
+const AccountMenu = ({ email, links, onSignOut, collapsed = false }: AccountMenuProps): JSX.Element => {
   const { resolvedTheme, toggleTheme, language, setLanguage } = usePreferences();
   const { showToast } = useToast();
 
@@ -83,7 +82,6 @@ const AccountMenu = ({ email, planName, links, onSignOut, collapsed = false }: A
           <>
             <span className={styles.identity}>
               <strong className={styles.email}>{email}</strong>
-              <small className={styles.plan}>{planName}</small>
             </span>
             <ChevronDown
               size={14}

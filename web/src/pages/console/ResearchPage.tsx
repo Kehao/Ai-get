@@ -7,6 +7,7 @@ import { ArrowRight, FileText, MoreHorizontal, Paperclip, Sparkles } from 'lucid
 import * as researchApi from '@/api/research';
 import type { ResearchRecord } from '@/api/types';
 import Button from '@/components/Button';
+import ChipScroller from '@/components/ChipScroller';
 import Dropdown from '@/components/Dropdown';
 import Tag from '@/components/Tag';
 import { useToast } from '@/components/Toast';
@@ -123,7 +124,7 @@ const ResearchPage = (): JSX.Element => {
 
         <div className={styles.questionBlock}>
           <span className={styles.questionLabel}>推荐问题</span>
-          <div className={styles.questionRow}>
+          <ChipScroller>
             {(questions.data ?? []).map((question) => (
               <button
                 key={question}
@@ -134,7 +135,7 @@ const ResearchPage = (): JSX.Element => {
                 {question}
               </button>
             ))}
-          </div>
+          </ChipScroller>
         </div>
       </section>
 

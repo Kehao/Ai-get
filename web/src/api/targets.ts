@@ -10,8 +10,10 @@ import type {
   Strategy,
   TargetColumn,
   TargetCompany,
+  TargetCompanyDetail,
   TargetList,
   TargetOverview,
+  UpdateConditionsPayload,
   UploadResult,
 } from './types';
 
@@ -48,6 +50,15 @@ export const addColumn = (listId: string, name: string): Promise<TargetColumn> =
 
 export const addMoreCompanies = (listId: string, count: number): Promise<TargetList> =>
   request<TargetList>(`/targets/lists/${listId}/more`, { method: 'POST', body: { count } });
+
+export const updateConditions = (listId: string, payload: UpdateConditionsPayload): Promise<TargetList> =>
+  request<TargetList>(`/targets/lists/${listId}/conditions`, { method: 'PATCH', body: payload });
+
+export const remine = (listId: string): Promise<TargetList> =>
+  request<TargetList>(`/targets/lists/${listId}/mine`, { method: 'POST' });
+
+export const readCompanyDetail = (listId: string, rowId: string): Promise<TargetCompanyDetail> =>
+  request<TargetCompanyDetail>(`/targets/lists/${listId}/companies/${rowId}`);
 
 export const readOutreach = (listId: string): Promise<OutreachPlan | null> =>
   request<OutreachPlan | null>(`/targets/lists/${listId}/outreach`);

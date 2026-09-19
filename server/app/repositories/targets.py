@@ -13,7 +13,7 @@ import time
 import uuid
 import zlib
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from ..config import MINING_DURATION_SECONDS
 from ..models import (
@@ -26,12 +26,24 @@ from ..models import (
     SearchMode,
     TargetColumn,
     TargetCompany,
+    TargetCompanyDetail,
     TargetList,
-    TaskStatus,
+)
+from ..mock.company_corpus import CompanySeed
+from ..mock.dossiers import (
+    build_evaluations,
+    build_outreach_note,
+    build_references,
+    build_research_results,
 )
 from ..mock.people import build_contacts
-from ..mock.company_corpus import CompanySeed
-from ..mock.synth import CITIES, COMPANY_INDEX
+from ..mock.strategy import (
+    build_conditions,
+    build_strategy_groups,
+    conditions_from_texts,
+    detect_city,
+)
+from ..mock.synth import COMPANY_INDEX
 
 _UPLOAD_HEADER_HINTS = ("公司", "企业", "名称", "name", "company")
 
@@ -84,14 +96,15 @@ class TargetListRepository:
             requested_count=count,
             discovered_count=0,
             contact_count=0,
-            conditions=_derive_conditions(query),
+            condition_items=build_conditions(query),
+            strategy_groups=build_strategy_groups(query),
             follow_up_plan=None,
             created_at=now,
             updated_at=now,
         )
         state = _ListState(
             target_list=target_list,
-            rows=_build_rows(seed, count, columns, _detect_city(query)),
+            rows=_build_rows(seed, count, columns, detect_city(query), created_at=now),
             columns=columns,
         )
         with self._lock:
@@ -117,12 +130,13 @@ class TargetListRepository:
             requested_count=len(names),
             discovered_count=len(names),
             contact_count=0,
-            conditions=["按上传文件中的公司名称逐条富化", "补齐行业、AI 摘要与联系方式"],
+            condition_items=build_conditions("按上传文件中的公司名称逐条富化，补齐行业、AI 摘要与联系方式"),
+            strategy_groups=[],
             follow_up_plan=None,
             created_at=now,
             updated_at=now,
         )
-        rows = _build_rows(seed, len(names), columns, preferred_city=None, names_override=names)
+        rows = _build_rows(seed, len(names), columns, preferred_city=None, names_override=names, created_at=now)
         state = _ListState(target_list=target_list, rows=rows, columns=columns)
         with self._lock:
             self._states[list_id] = state
@@ -201,6 +215,25 @@ class TargetListRepository:
             return []
         return build_contacts(_seed_from(row_id), company.website, company.contact_count)
 
+    def company_detail(self, list_id: str, row_id: str) -> TargetCompanyDetail | None:
+        """企业详情页所需的完整内容：档案、参考资料、触达说明、调研结果与准入条件评估。"""
+        with self._lock:
+            state = self._states.get(list_id)
+            if state is None:
+                return None
+            company = next((row for row in state.rows if row.id == row_id), None)
+            if company is None:
+                return None
+
+            return TargetCompanyDetail(
+                company=company,
+                references=build_references(company),
+                outreach_note=build_outreach_note(company, state.outreach is not None),
+                outreach=state.outreach,
+                research_results=build_research_results(company),
+                evaluations=build_evaluations(company, list(state.target_list.condition_items)),
+            )
+
     # ── 变更 ────────────────────────────────────────────────────────────
 
     def add_column(self, list_id: str, name: str) -> TargetColumn | None:
@@ -226,13 +259,60 @@ class TargetListRepository:
                 extra_seed,
                 count,
                 state.columns,
-                _detect_city(state.target_list.query),
+                detect_city(state.target_list.query),
             )
             state.rows.extend(extra_rows)
             state.target_list.requested_count = len(state.rows)
             state.target_list.discovered_count = len(state.rows)
             state.target_list.status = "completed"
             state.target_list.progress = 100
+            state.target_list.updated_at = datetime.now(timezone.utc)
+            self._refresh(state)
+            return state.target_list
+
+    def update_conditions(
+        self,
+        list_id: str,
+        query: str | None,
+        conditions: list[str],
+    ) -> TargetList | None:
+        """保存挖掘配置。条件条目由前端提交的文本重建，颜色仍按位置循环分配。"""
+        cleaned = [item.strip() for item in conditions if item.strip()]
+        if not cleaned:
+            raise ValueError("至少需要保留一条判断条件")
+
+        with self._lock:
+            state = self._states.get(list_id)
+            if state is None:
+                return None
+
+            if query is not None and query.strip():
+                state.target_list.query = query.strip()
+            state.target_list.condition_items = conditions_from_texts(cleaned)
+            state.target_list.strategy_groups = build_strategy_groups(state.target_list.query)
+            state.target_list.updated_at = datetime.now(timezone.utc)
+            return state.target_list
+
+    def remine(self, list_id: str) -> TargetList | None:
+        """按最新配置重跑挖掘：换一批结果并重置进度。"""
+        with self._lock:
+            state = self._states.get(list_id)
+            if state is None:
+                return None
+
+            seed = _seed_from(f"{list_id}-{int(time.time() * 1000)}")
+            state.rows = _build_rows(
+                seed,
+                state.target_list.requested_count,
+                state.columns,
+                detect_city(state.target_list.query),
+                created_at=datetime.now(timezone.utc),
+            )
+            state.started_at = time.monotonic()
+            state.target_list.status = "running"
+            state.target_list.progress = 0
+            state.target_list.discovered_count = 0
+            state.target_list.contact_count = 0
             state.target_list.updated_at = datetime.now(timezone.utc)
             self._refresh(state)
             return state.target_list
@@ -331,9 +411,11 @@ def _build_rows(
     columns: list[TargetColumn],
     preferred_city: str | None,
     names_override: list[str] | None = None,
+    created_at: datetime | None = None,
 ) -> list[TargetCompany]:
     rows: list[TargetCompany] = []
     seeds = _select_seeds(seed, count, preferred_city)
+    stamp = created_at or datetime.now(timezone.utc)
 
     for index, company in enumerate(seeds):
         name = names_override[index] if names_override and index < len(names_override) else company.name
@@ -364,6 +446,7 @@ def _build_rows(
                 location=company.location,
                 employees=company.employees,
                 funding_stage=company.funding_stage,
+                created_at=stamp + timedelta(seconds=index * 7),
                 custom_values={},
             )
         )
@@ -431,33 +514,6 @@ def _sort_rows(rows: list[TargetCompany], sort: str, all_rows: list[TargetCompan
 
     relevance = {row.id: index for index, row in enumerate(all_rows)}
     return sorted(rows, key=lambda row: (_MATCH_LEVEL_ORDER[row.match_level], relevance[row.id]))
-
-
-def _derive_conditions(query: str) -> list[str]:
-    """把用户输入的画像描述拆成展示用的条件条目，单条保持简短。"""
-    conditions = [_shorten(item) for item in _split_query(query) if item.strip()][:4]
-
-    city = _detect_city(query)
-    if city:
-        conditions.append(f"优先选择在{city}的企业")
-    conditions.append("补齐行业、规模与联系方式后再进入触达")
-    return conditions
-
-
-def _detect_city(query: str) -> str | None:
-    return next((city for city in CITIES if city in query), None)
-
-
-def _shorten(text: str, limit: int = 22) -> str:
-    stripped = text.strip()
-    return stripped if len(stripped) <= limit else f"{stripped[:limit]}…"
-
-
-def _split_query(query: str) -> list[str]:
-    normalized = query
-    for separator in ("，", ",", "；", ";", "。", "、", "\n"):
-        normalized = normalized.replace(separator, "|")
-    return normalized.split("|")
 
 
 def _parse_uploaded_names(content: bytes) -> list[str]:

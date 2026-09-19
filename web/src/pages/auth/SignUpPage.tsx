@@ -64,20 +64,6 @@ const SignUpPage = (): JSX.Element => {
         <h1 className={styles.title}>注册</h1>
         <p className={styles.subtitle}>创建 Ai-get 账户，开始用 AI 销售智能体获客</p>
 
-        <Button
-          variant="outline"
-          size="lg"
-          block
-          leadingIcon={<span aria-hidden>G</span>}
-          onClick={() => showToast('演示环境未接入 Google 登录，请使用邮箱注册', 'info')}
-        >
-          使用 Google 注册
-        </Button>
-
-        <div className={styles.divider}>
-          <span>或</span>
-        </div>
-
         <form className={styles.form} onSubmit={(event) => void handleSubmit(event)}>
           <label className={styles.field}>
             <span className={styles.label}>邮箱</span>

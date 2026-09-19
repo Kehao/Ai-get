@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..config import COMPANY_COUNT_OPTIONS, FREE_COMPANY_COUNT
+from ..config import COMPANY_COUNT_OPTIONS
 from ..models import AgentTemplate, Channel, CountOption, Strategy
 
 STRATEGIES: tuple[Strategy, ...] = (
@@ -16,9 +16,7 @@ STRATEGIES: tuple[Strategy, ...] = (
     Strategy(id="strategy-webinar", text="定期举办网络研讨会 (Webinar) 的 B2B SaaS 品牌"),
 )
 
-COUNT_OPTIONS: tuple[CountOption, ...] = tuple(
-    CountOption(value=value, is_free=value == FREE_COMPANY_COUNT) for value in COMPANY_COUNT_OPTIONS
-)
+COUNT_OPTIONS: tuple[CountOption, ...] = tuple(CountOption(value=value) for value in COMPANY_COUNT_OPTIONS)
 
 RESEARCH_QUESTIONS: tuple[str, ...] = (
     "帮我对 Cargill 进行贸易背调",
@@ -79,8 +77,7 @@ EMAIL_CHANNEL = Channel(
     group="邮箱渠道",
     description="通过你的邮件服务器收发邮件",
     icon="mail",
-    state="locked",
-    required_plan="Starter",
+    state="available",
     account_label=None,
 )
 
@@ -91,8 +88,7 @@ SOCIAL_CHANNELS: tuple[Channel, ...] = (
         group="社媒渠道",
         description="访问职业资料、公司数据与消息能力",
         icon="linkedin",
-        state="locked",
-        required_plan="Scale",
+        state="available",
         account_label=None,
     ),
     Channel(
@@ -101,8 +97,7 @@ SOCIAL_CHANNELS: tuple[Channel, ...] = (
         group="社媒渠道",
         description="发送消息并管理联系人",
         icon="message-circle",
-        state="locked",
-        required_plan="Scale",
+        state="available",
         account_label=None,
     ),
 )
@@ -115,7 +110,6 @@ COMING_SOON_CHANNELS: tuple[Channel, ...] = (
         description="访问帖子、Stories 与互动数据",
         icon="instagram",
         state="coming_soon",
-        required_plan=None,
         account_label=None,
     ),
     Channel(
@@ -125,7 +119,6 @@ COMING_SOON_CHANNELS: tuple[Channel, ...] = (
         description="管理频道、群组与机器人",
         icon="send",
         state="coming_soon",
-        required_plan=None,
         account_label=None,
     ),
 )

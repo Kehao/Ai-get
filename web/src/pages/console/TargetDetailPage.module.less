@@ -1,3 +1,8 @@
+// 参考站颜色：实心填充色，深色模式下同样配白字，因此保持字面量。
+@mine-purple: #a548ee;
+@mine-gradient: linear-gradient(90deg, #7c3aed 0%, #a548ee 45%, #f65196 100%);
+@progress-gradient: linear-gradient(to right, #546efd 0%, #f65196 55%, #a548ee 100%);
+
 .page {
   display: flex;
   flex-direction: column;
@@ -145,15 +150,31 @@
     border-bottom: 1px solid @color-border;
     vertical-align: top;
   }
+}
 
-  tbody tr:hover {
+// 整行可点击进入详情，因此 hover 与选中态都作用在 tr 上
+.row {
+  cursor: pointer;
+
+  &:hover {
     background: @color-primary-softer;
   }
+}
+
+.rowActive {
+  background: @color-primary-softer;
+  box-shadow: inset 3px 0 0 @color-primary;
 }
 
 .checkCell {
   width: 40px;
   text-align: center;
+}
+
+.indexCell {
+  width: 36px;
+  text-align: center;
+  color: @color-text-tertiary;
 }
 
 .summaryCell {
@@ -203,7 +224,15 @@
 }
 
 .website {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
   color: @color-accent;
+
+  svg {
+    flex: none;
+    color: @color-text-tertiary;
+  }
 
   &:hover {
     text-decoration: underline;
@@ -334,80 +363,166 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: @space-4;
-  width: 296px;
+  gap: @space-3;
+  width: 320px;
+  min-height: 0;
   flex: none;
-  padding: @space-4;
+  padding: @space-3;
   border-left: 1px solid @color-border;
   background: @color-surface;
-  overflow-y: auto;
-  .thin-scrollbar();
+}
+
+.panelCollapsed {
+  width: 44px;
+  align-items: center;
 }
 
 .panelTabs {
   display: flex;
+  align-items: center;
   gap: @space-2;
   padding: 3px;
-  border-radius: @radius-pill;
+  border-radius: @radius-md;
   background: @color-surface-muted;
+  flex: none;
+}
+
+.tabGroup {
+  display: flex;
+  gap: 2px;
+  flex: 1;
 }
 
 .panelTab,
 .panelTabActive {
   flex: 1;
-  padding: @space-1 0;
-  text-align: center;
-  border-radius: @radius-pill;
-  font-size: @font-sm;
+  height: 32px;
+  border: none;
+  border-radius: @radius-sm;
+  background: transparent;
+  font-family: inherit;
+  font-size: @font-md;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .panelTabActive {
   background: @color-surface;
-  color: @color-accent;
-  font-weight: 500;
+  color: @color-text;
   box-shadow: @shadow-xs;
 }
 
 .panelTab {
   color: @color-text-secondary;
-}
 
-.panelSection {
-  display: flex;
-  flex-direction: column;
-  gap: @space-3;
-  padding: @space-4;
-  border-radius: @radius-md;
-  border: 1px solid @color-border;
-  background: @color-surface;
-}
-
-.panelHeader {
-  display: flex;
-  align-items: center;
-  gap: @space-2;
-
-  h3 {
-    font-size: @font-md;
-    font-weight: 600;
-    flex: 1;
+  &:hover {
+    color: @color-text;
   }
 }
 
-.panelIcon {
-  font-size: @font-md;
+.panelToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: none;
+  border-radius: @radius-xs;
+  background: transparent;
+  color: @color-text-tertiary;
+
+  &:hover {
+    background: @color-surface;
+    color: @color-accent;
+  }
 }
 
-.progressValue {
-  font-size: @font-sm;
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  .thin-scrollbar();
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+  padding: @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-md;
+  background: @color-surface;
+  flex: none;
+}
+
+.progressCard {
+  border-radius: @radius-lg;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+}
+
+.cardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: @radius-xs;
+  background: @color-primary-softer;
   color: @color-accent;
-  font-weight: 600;
 }
 
-.progressHint {
-  font-size: @font-xs;
+.cardTitle {
+  font-size: @font-md;
+  font-weight: 600;
+  color: @color-text;
+  flex: 1;
+}
+
+.cardHint {
+  font-size: 11px;
+  color: @color-text-tertiary;
+}
+
+.cardBadge {
+  padding: 1px @space-2;
+  border: 1px solid @color-border;
+  border-radius: @radius-pill;
+  font-size: 11px;
   color: @color-text-secondary;
-  line-height: 1.7;
+}
+
+// ── 挖掘：条件 ────────────────────────────────────────────────────────────
+.queryInput {
+  width: 100%;
+  min-height: 68px;
+  padding: @space-3 @space-4;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface;
+  color: @color-text;
+  font-family: inherit;
+  font-size: @font-md;
+  line-height: 22px;
+  resize: vertical;
+
+  &::placeholder {
+    color: @color-text-tertiary;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: @color-primary;
+  }
 }
 
 .conditionList {
@@ -416,29 +531,100 @@
   gap: @space-2;
 }
 
-.condition {
-  padding: @space-2 @space-3;
-  border-radius: @radius-sm;
-  background: @color-primary-softer;
-  border-left: 3px solid @color-primary-light;
-  font-size: @font-xs;
-  color: @color-text-secondary;
-  line-height: 1.6;
-}
-
-.moreButtons {
+.conditionRow {
   display: flex;
-  gap: @space-2;
+  align-items: stretch;
+  min-height: 44px;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface;
+  overflow: hidden;
 }
 
-.moreChip {
+.conditionBar {
+  width: 4px;
+  flex: none;
+}
+
+.conditionInput {
   flex: 1;
-  height: 30px;
-  border-radius: @radius-pill;
-  border: 1px solid @color-border;
-  background: @color-surface;
+  min-width: 0;
+  padding: 0 @space-3;
+  border: none;
+  background: transparent;
   color: @color-text-secondary;
+  font-family: inherit;
   font-size: @font-xs;
+  line-height: 1.5;
+
+  &::placeholder {
+    color: @color-text-tertiary;
+  }
+
+  &:focus {
+    outline: none;
+    background: @color-surface-muted;
+  }
+}
+
+.conditionRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  flex: none;
+  border: none;
+  background: transparent;
+  color: @color-text-tertiary;
+
+  &:hover {
+    color: @color-danger-text;
+  }
+}
+
+.conditionActions {
+  display: flex;
+  align-items: center;
+  gap: @space-3;
+  padding-top: @space-3;
+  border-top: 1px solid @color-border;
+}
+
+.textButton,
+.textButtonMuted {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11px;
+  color: @color-text-tertiary;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: @color-accent;
+  }
+}
+
+.textButtonMuted {
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.saveButton {
+  margin-left: auto;
+  height: 28px;
+  padding: 0 @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface-muted;
+  color: @color-text-secondary;
+  font-family: inherit;
+  font-size: @font-xs;
+  cursor: pointer;
 
   &:hover:not(:disabled) {
     border-color: @color-primary-border;
@@ -446,8 +632,485 @@
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.55;
     cursor: not-allowed;
+  }
+}
+
+// 「开始挖掘」在配置未改动时禁用，因此不做变灰处理，只保留禁用光标
+.mineButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: @space-2;
+  width: 100%;
+  height: 40px;
+  border: none;
+  border-radius: @radius-sm;
+  background: @mine-purple;
+  color: @color-text-inverse;
+  font-family: inherit;
+  font-size: @font-sm;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.configHint {
+  font-size: 11px;
+  color: @color-text-tertiary;
+  line-height: 1.6;
+}
+
+// ── 挖掘：策略 ────────────────────────────────────────────────────────────
+.strategyList {
+  display: flex;
+  flex-direction: column;
+  gap: @space-4;
+}
+
+.strategyGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strategyTitle {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+  font-size: @font-xs;
+  font-weight: 600;
+  color: @color-text;
+}
+
+.strategyDot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: @mine-purple;
+}
+
+.strategyDesc {
+  font-size: @font-xs;
+  color: @color-text-secondary;
+  line-height: 1.6;
+}
+
+.strategyExamples {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    gap: 6px;
+    font-size: 10px;
+    color: @color-text-tertiary;
+    line-height: 1.55;
+  }
+
+  svg {
+    flex: none;
+    margin-top: 3px;
+  }
+}
+
+// ── 挖掘：进度 ────────────────────────────────────────────────────────────
+.progressValue {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: @font-xs;
+  color: @color-text-secondary;
+
+  strong {
+    font-size: @font-xl;
+    font-weight: 600;
+    color: @color-text;
+  }
+
+  i {
+    font-style: normal;
+    color: @color-text-tertiary;
+  }
+}
+
+.progressTrack {
+  height: 6px;
+  border-radius: @radius-pill;
+  background: @color-surface-muted;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: @radius-pill;
+  background: @progress-gradient;
+  transition: width 0.3s ease;
+}
+
+.progressHint {
+  font-size: @font-xs;
+  color: @color-text-secondary;
+  line-height: 1.7;
+}
+
+.moreButtons {
+  display: flex;
+  gap: @space-2;
+}
+
+.moreChip,
+.moreChipActive {
+  flex: 1;
+  height: 33px;
+  border-radius: @radius-md;
+  border: 2px solid @color-border;
+  background: @color-surface-muted;
+  color: @color-text-tertiary;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.moreChipActive {
+  border-color: @mine-purple;
+  color: @mine-purple;
+  background: fade(@mine-purple, 8%);
+}
+
+.moreButton {
+  width: 100%;
+  height: 33px;
+  border: none;
+  border-radius: @radius-md;
+  background: @mine-gradient;
+  color: @color-text-inverse;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+// ── 详情：企业档案 ────────────────────────────────────────────────────────
+.dossier {
+  display: flex;
+  flex-direction: column;
+  // 不参与收缩，否则长档案会被容器裁掉而不是让 panelBody 滚动
+  flex: none;
+  border: 1px solid @color-border;
+  border-radius: @radius-md;
+  background: @color-surface;
+  overflow: hidden;
+}
+
+.dossierHead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: @space-1;
+  padding: @space-3;
+}
+
+.dossierLabel {
+  font-size: @font-xs;
+  font-weight: 500;
+  color: @color-text-tertiary;
+}
+
+.dossierName {
+  font-size: @font-md;
+  font-weight: 700;
+  color: @color-text;
+}
+
+.dossierBadge {
+  padding: 1px 10px;
+  border-radius: @radius-pill;
+  background: @color-surface-muted;
+  color: @color-text-tertiary;
+  font-size: @font-xs;
+}
+
+.dossierLink {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  font-size: @font-xs;
+  color: @color-info-text;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.dossierBlock {
+  display: flex;
+  flex-direction: column;
+  padding: @space-3;
+  border-top: 1px solid @color-border;
+}
+
+.blockLabel {
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+  margin-bottom: 6px;
+}
+
+.blockText {
+  font-size: @font-xs;
+  color: @color-text-secondary;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.blockMeta {
+  margin-top: @space-1;
+  font-size: 11px;
+  color: @color-text-tertiary;
+}
+
+.referenceList {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+.referenceTitle {
+  font-size: @font-xs;
+  color: @color-text;
+  word-break: break-word;
+}
+
+.referenceLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: @color-info-text;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.infoBlock {
+  margin: 0;
+  padding: @space-3;
+  border-top: 1px solid @color-border;
+
+  > div {
+    display: flex;
+    gap: @space-3;
+    font-size: @font-xs;
+
+    + div {
+      margin-top: 6px;
+    }
+  }
+
+  dt {
+    width: 60px;
+    flex: none;
+    color: @color-text-tertiary;
+  }
+
+  dd {
+    margin: 0;
+    color: @color-text;
+    word-break: break-word;
+  }
+}
+
+.researchList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.researchItem {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+  padding: @space-2 @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface-muted;
+}
+
+.researchTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: @font-xs;
+  font-weight: 500;
+  color: @color-text;
+  white-space: nowrap;
+}
+
+.researchSummaryReady,
+.researchSummaryEmpty {
+  flex: none;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.researchSummaryReady {
+  color: @color-success-text;
+}
+
+.researchSummaryEmpty {
+  color: @color-text-tertiary;
+}
+
+.evidenceButton {
+  flex: none;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11px;
+  color: @color-accent;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.evalList {
+  display: flex;
+  flex-direction: column;
+  gap: @space-3;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evalItem {
+  + .evalItem {
+    padding-top: @space-3;
+    border-top: 1px dashed @color-border;
+  }
+}
+
+.evalHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.evalCondition {
+  flex: 1;
+  min-width: 0;
+  font-size: @font-xs;
+  font-weight: 500;
+  color: @color-text;
+}
+
+.evalMatch,
+.evalUnsure,
+.evalMiss {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: @radius-pill;
+  font-size: 10px;
+}
+
+.evalMatch {
+  background: fade(@color-success, 12%);
+  color: @color-success-text;
+}
+
+.evalUnsure {
+  background: fade(@color-warning, 16%);
+  color: @color-warning-text;
+}
+
+.evalMiss {
+  background: fade(@color-danger, 12%);
+  color: @color-danger-text;
+}
+
+.evalRef {
+  flex: none;
+  font-size: 10px;
+  color: @color-text-tertiary;
+}
+
+.evalText {
+  margin-top: 6px;
+  font-size: 11px;
+  color: @color-text-secondary;
+  line-height: 1.65;
+}
+
+.evalSource {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: @color-accent;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.dossierEmpty {
+  padding: @space-6 @space-4;
+  text-align: center;
+  font-size: @font-xs;
+  color: @color-text-tertiary;
+  line-height: 1.7;
+}
+
+.dossierLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: @space-2;
+  padding: @space-8;
+  color: @color-text-secondary;
+  font-size: @font-xs;
+}
+
+.evidenceList {
+  margin: 0;
+  padding-left: @space-4;
+  color: @color-text-secondary;
+  font-size: @font-sm;
+  line-height: 1.7;
+
+  li + li {
+    margin-top: @space-2;
   }
 }
 
@@ -570,8 +1233,9 @@
   font-weight: 500;
 }
 
-@media (max-width: 1180px) {
+// 窄屏下收窄面板而不是隐藏：挖掘与详情是这一页的主要操作区
+@media (max-width: 1400px) {
   .panel {
-    display: none;
+    width: 288px;
   }
 }
