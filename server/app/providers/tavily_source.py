@@ -6,10 +6,13 @@ Tavily 是 Agent 原生检索服务（免费层每月 1000 credits），在这�
 
 ## 映射规则
 
-- **域名**从结果 URL 的 netloc 提取（去掉 `www.`），是去重键与后续补齐（PDL enrich）
-  的主键；不带合法域名、或命中非企业站点清单（维基/博客平台/UGC 社区）的结果直接
-  丢弃——没有域名的「公司」既无法去重也无法触达，假公司比少一条候选更有害。
-- **名称**从页面标题里截取（按常见分隔符切第一段），截不出时退化到域名主体。
+网页结果 → `CompanyRecord` 的折算规则（域名提取、标题取名、站点过滤）在两个网页
+检索源之间共用，见 `web_mapping`。这里只保留 Tavily 自己的检索策略：查什么、
+查几次、怎么计价。
+
+- **域名**是去重键与后续补齐（PDL enrich）的主键；不带合法域名、或命中媒体/UGC
+  清单的结果直接丢弃——没有域名的「公司」既无法去重也无法触达，假公司比少一条
+  候选更有害。
 - **摘要**用 Tavily 返回的 content；拿不到就如实上报 `missing_fields`，
   绝不用空字符串冒充摘要。
 - **行业**只把画像提示里**真实出现在标题或正文**的词记进来，不做推断——
@@ -25,12 +28,15 @@ Tavily 是 Agent 原生检索服务（免费层每月 1000 credits），在这�
 
 凭据缺失/配额耗尽等全部收敛为带 `kind` 的 `SourceError`，由注册表记入
 `meta["failures"]`；mock 源仍在瀑布里兜底，所以召回永远不会因为 Tavily 挂掉而中断。
+
+## 开关
+
+`AIGET_TAVILY_ENABLED=false` 时不注册（密钥保留），用于暂时停用换别的源。
 """
 
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlparse
 
 from tavily import TavilyClient
 
@@ -47,6 +53,13 @@ from .contracts import (
     SourceManifest,
 )
 from .registry import register_source
+from .web_mapping import (
+    extract_domain,
+    is_non_company_domain,
+    name_from_domain,
+    name_from_title,
+    registrable_domain,
+)
 
 # Tavily 单次检索的候选上限。免费层的 basic depth 一次最多返回 20 条，
 # 一次挖掘的目标量（默认 25）本就不指望网页检索一次凑齐——数量由 mock 兜底。
@@ -54,38 +67,6 @@ _MAX_RESULTS_PER_SEARCH = 20
 
 # web 富化每家企业的检索条数：只找一条相关摘要，多了是浪费。
 _ENRICH_MAX_RESULTS = 5
-
-# 标题里常见的「站点名 - 页面标题」类分隔符。切出第一段作为公司名的候选。
-_TITLE_SEPARATORS = (" | ", " - ", " — ", "｜", "－", "·")
-
-_NAME_MAX_CHARS = 40
-
-# 拉丁标题按空格分词超过这个数，更像「Shop SaaS Tools Online」这类页面标语
-# 而不是公司名——此时不采用标题，退化到域名主体。中文公司名无空格不受影响。
-_NAME_MAX_WORDS = 3
-
-# 明显不是企业官网的站点：维基/博客平台/UGC 社区/示例域名。它们出现在召回里
-# 只会产出「假公司」，丢弃比误收更便宜——召回宁缺毋滥，数量由 mock 源兜底。
-# 判定按注册域（含子域）后缀匹配，如 en.wikipedia.org 同样命中 wikipedia.org。
-_NON_COMPANY_DOMAINS = frozenset(
-    {
-        "example.com",
-        "example.net",
-        "example.org",
-        "wikipedia.org",
-        "github.com",
-        "medium.com",
-        "wordpress.com",
-        "blogspot.com",
-        "zhihu.com",
-        "csdn.net",
-        "linkedin.com",
-        "facebook.com",
-        "twitter.com",
-        "x.com",
-    }
-)
-
 _MANIFEST = SourceManifest(
     id="tavily",
     name="Tavily 网页召回",
@@ -113,6 +94,12 @@ class TavilySource:
     @staticmethod
     def is_configured() -> bool:
         return bool(config.TAVILY_API_KEY)
+
+    @staticmethod
+    def is_enabled() -> bool:
+        """显式开关（`AIGET_TAVILY_ENABLED`）。关掉时即便 key 就在 .env 里也不注册——
+        用于「暂时停用换别的源试试」，不必删除密钥。"""
+        return bool(config.TAVILY_ENABLED)
 
     def _tavily(self) -> TavilyClient:
         if self._client is None:
@@ -252,14 +239,18 @@ def _to_company_records(response: dict[str, Any], query: CompanyQuery) -> list[C
     seen: set[str] = set()
 
     for item in results:
-        domain = _extract_domain(str(item.get("url", "")))
-        if not domain or _is_non_company(domain) or domain in seen:
+        domain = extract_domain(str(item.get("url", "")))
+        if not domain or is_non_company_domain(domain):
             continue
-        seen.add(domain)
+        # 去重按注册域：同一家公司的不同子域不该在列表里占两行。
+        domain_key = registrable_domain(domain)
+        if domain_key in seen:
+            continue
+        seen.add(domain_key)
 
         title = str(item.get("title", "")).strip()
         content = str(item.get("content", "")).strip()
-        name = _name_from_title(title) or _name_from_domain(domain)
+        name = name_from_title(title, domain) or name_from_domain(domain)
         industries = tuple(
             hint
             for hint in query.industry_hints
@@ -294,39 +285,6 @@ def _to_company_records(response: dict[str, Any], query: CompanyQuery) -> list[C
     return records
 
 
-def _extract_domain(url: str) -> str:
-    netloc = urlparse(url).netloc.strip().lower()
-    if netloc.startswith("www."):
-        netloc = netloc[4:]
-    # 没有 "." 的 netloc（内网主机名、畸形 URL）当不成企业域名。
-    return netloc if "." in netloc else ""
-
-
-def _is_non_company(domain: str) -> bool:
-    """域名（或其注册域）命中非企业站点清单则丢弃。"""
-    parts = domain.split(".")
-    registrable = ".".join(parts[-2:]) if len(parts) >= 2 else domain
-    return registrable in _NON_COMPANY_DOMAINS
-
-
-def _name_from_title(title: str) -> str:
-    """标题切第一段做公司名。切完为空、超长或像页面标语（词过多）时返回空串，
-    由调用方退化到域名主体。"""
-    for separator in _TITLE_SEPARATORS:
-        if separator in title:
-            title = title.split(separator, 1)[0]
-            break
-    title = title.strip()
-    if not title or len(title) > _NAME_MAX_CHARS or len(title.split()) > _NAME_MAX_WORDS:
-        return ""
-    return title
-
-
-def _name_from_domain(domain: str) -> str:
-    root = domain.split(".", 1)[0]
-    return root[:_NAME_MAX_CHARS].replace("-", " ").strip().capitalize() or domain
-
-
 def _classify(error: Exception, message: str) -> SourceError:
     """把 SDK 抛出的原始异常映射成带 kind 的 SourceError。
 
@@ -351,7 +309,7 @@ def _classify(error: Exception, message: str) -> SourceError:
     )
 
 
-# 凭据就绪才注册：没有 key 的 tavily 留在注册表里只会在每次瀑布尝试时
+# 凭据就绪**且未被显式关闭**才注册：没有 key 的 tavily 留在注册表里只会在每次瀑布尝试时
 # 产生一条 missing_credentials 失败记录，毫无价值还污染 failures 日志。
-if TavilySource.is_configured():
+if TavilySource.is_configured() and TavilySource.is_enabled():
     register_source(TavilySource())

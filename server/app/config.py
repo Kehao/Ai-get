@@ -43,12 +43,26 @@ MINING_PHASE_WEIGHTS = {
 # 默认数据源 id。接入真实数据源后，用环境变量切过去即可，业务代码无需改动。
 DEFAULT_DATA_SOURCE = os.environ.get("AIGET_DATA_SOURCE", "mock")
 
+# 公司召回的专用源。留空 = 跟随 DEFAULT_DATA_SOURCE。
+# 之所以与默认源分开：网页检索源（百度 / Tavily）只做**公司**召回，没有人物档案能力，
+# 把 AIGET_DATA_SOURCE 整体切过去会让「找人」在取值时直接炸掉。分成两个键之后，
+# 「公司走真实检索、人物走演示语料」可以各自成立。
+COMPANY_SOURCE = os.environ.get("AIGET_COMPANY_SOURCE", "") or DEFAULT_DATA_SOURCE
+
 # ── 真实数据源凭据（P4/P5）─────────────────────────────────────────────────
 # 留空 = 该源不注册，业务链路自动退回 mock，不会报错。
 # Tavily（P4 召回）：https://tavily.com 免费层每月 1000 credits。
 # PDL（P5 字段补齐）：https://peopledatalabs.com 免费层每月 100 credits，
 # 仅 base 字段（联系方式档位要付费，免费层拿不到就如实显示缺失）。
 TAVILY_API_KEY = os.environ.get("AIGET_TAVILY_API_KEY", "")
+# Tavily 的显式开关：置 false 时**即便 key 就绪也不注册**这个源。
+# 用途是「暂时停用」某个源而不必去动 .env 里的密钥（密钥删了容易忘、也难恢复）。
+TAVILY_ENABLED = os.environ.get("AIGET_TAVILY_ENABLED", "true").strip().lower() not in (
+    "false",
+    "0",
+    "no",
+    "off",
+)
 PDL_API_KEY = os.environ.get("AIGET_PDL_API_KEY", "")
 # 百度 AI 搜索（P6 web 富化）：https://cloud.baidu.com/doc/qianfan-api/s/Hmbu8m06u
 # 千帆平台「百度搜索」，免费额度按天发放；个人实名即可开通。

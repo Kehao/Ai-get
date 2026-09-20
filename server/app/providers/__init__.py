@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from ..config import DEFAULT_DATA_SOURCE
+from ..config import COMPANY_SOURCE, DEFAULT_DATA_SOURCE
 from . import enrichment  # noqa: F401 — 补齐编排随包导出
 from . import mock_source  # noqa: F401 — 导入即完成注册，是唯一的注册入口
 # 真实源（P4/P5）按凭据就绪与否在各自模块内决定是否注册，缺失时静默跳过。
@@ -100,8 +100,12 @@ __all__ = [
 
 
 def company_source(source_id: str = "") -> object:
-    """取默认的公司召回数据源。`source_id` 留空时用配置里的默认值。"""
-    return get_source(source_id or DEFAULT_DATA_SOURCE)
+    """取默认的公司召回数据源。
+
+    `source_id` 留空时用 `AIGET_COMPANY_SOURCE`（未设则跟随 `AIGET_DATA_SOURCE`）。
+    与 `person_source` 分开的必要性见 `config.COMPANY_SOURCE` 的注释。
+    """
+    return get_source(source_id or COMPANY_SOURCE)
 
 
 def person_source(source_id: str = "") -> object:
