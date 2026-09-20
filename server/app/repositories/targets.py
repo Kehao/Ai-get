@@ -36,6 +36,7 @@ from ..models import (
     CompanyPage,
     Contact,
     CreateOutreachRequest,
+    EnrichmentLedger,
     MatchLevel,
     MiningPhase,
     MiningProgress,
@@ -389,6 +390,7 @@ class TargetListRepository:
                 outreach=state.outreach,
                 research_results=build_research_results(cast(TargetCompany, company)),
                 evaluations=build_evaluations(state.judgments.get(company.id)),
+                enrichment=_enrichment_ledger(_record_of(state, company)),
             )
 
     def person_detail(self, list_id: str, row_id: str) -> TargetPersonDetail | None:
@@ -892,6 +894,32 @@ def _row_contact_total(rows: list[RowT]) -> int:
 def _record_of(state: _ListState, row: RowT) -> CompanyRecord | PersonRecord | None:
     """按行的稳定键回查数据源记录。判定与证据都要回到原始记录，而不是从展示字段倒推。"""
     return state.records.get(_row_key(row))
+
+
+# 富化台账展示的字段白名单：attributes 里还有 tavily_score 等内部键，不上屏。
+_ENRICHMENT_FIELD_KEYS = ("registered_capital", "legal_rep", "founded", "matched_title", "pdl_id")
+
+_ENRICHMENT_SOURCE_LABELS = {
+    "baidu": "百度 AI 搜索（爱企查）",
+    "tavily": "Tavily 网页检索",
+    "pdl": "People Data Labs",
+}
+
+
+def _enrichment_ledger(record: CompanyRecord | PersonRecord | None) -> EnrichmentLedger:
+    """把召回记录的富化痕迹整理成详情页可读的台账；没有富化过就是空台账。"""
+    if record is None or not isinstance(record, CompanyRecord):
+        return EnrichmentLedger()
+    attributes = record.attributes
+    enriched_by = attributes.get("enriched_by", "")
+    if not enriched_by:
+        return EnrichmentLedger()
+    fields = {key: attributes[key] for key in _ENRICHMENT_FIELD_KEYS if attributes.get(key)}
+    return EnrichmentLedger(
+        source_id=enriched_by,
+        source_label=_ENRICHMENT_SOURCE_LABELS.get(enriched_by, enriched_by),
+        fields=fields,
+    )
 
 
 def _conditions_from_criteria(criteria: list[Criterion]) -> list[TargetCondition]:

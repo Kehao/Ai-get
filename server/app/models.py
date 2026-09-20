@@ -332,6 +332,18 @@ class OutreachPlan(BaseModel):
     created_at: datetime
 
 
+class EnrichmentLedger(BaseModel):
+    """富化台账：哪个源补了什么字段。
+
+    照面字段（注册资本/法定代表人/成立日期）来自网页摘要抽取，
+    `matched_title` 记录命中的页面标题供人工核对——**不冒充权威数据**。
+    """
+
+    source_id: str = ""
+    source_label: str = ""
+    fields: dict[str, str] = Field(default_factory=dict)
+
+
 class TargetCompanyDetail(BaseModel):
     company: TargetCompany
     references: list[ReferenceItem]
@@ -339,6 +351,7 @@ class TargetCompanyDetail(BaseModel):
     outreach: OutreachPlan | None
     research_results: list[ResearchResult]
     evaluations: list[ConditionEvaluation]
+    enrichment: EnrichmentLedger = Field(default_factory=EnrichmentLedger)
 
 
 class TargetPersonDetail(BaseModel):

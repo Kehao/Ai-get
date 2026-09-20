@@ -119,3 +119,56 @@ def test_delete_list_persists(repo_factory):
     hydrated = repo_factory()
 
     assert hydrated.get_list(created.id) is None
+
+
+# ── 富化台账：详情页 company_detail 下发 enrich 痕迹 ──────────────────────
+
+
+def _complete_like_hydrate(repo: TargetListRepository, list_id: str) -> None:
+    """create_list 之后行还没「验证」，页面上看不到；按水合语义直接置完成。"""
+    state = repo._states[list_id]
+    targets_mod._apply_progress(state, stage="completed", verified=len(state.rows), completed=True)
+
+
+def test_company_detail_carries_enrichment_ledger(repo_factory, monkeypatch):
+    """attributes 带 enriched_by 的记录，详情接口要给出可读台账；没富化过就是空台账。"""
+
+    def _fake_enrich(records):
+        if records:
+            records[0].attributes.update(
+                {
+                    "enriched_by": "baidu",
+                    "registered_capital": "1000万人民币",
+                    "matched_title": "邢台云杉网络科技",  # 同名风险样本
+                    "tavily_score": "0.9",  # 内部键，不上屏
+                }
+            )
+        return records
+
+    monkeypatch.setattr(targets_mod, "enrich_companies", _fake_enrich)
+    repo = repo_factory()
+    created = repo.create_list("找华东的 SaaS 公司", "company", 5)
+    _complete_like_hydrate(repo, created.id)
+    page = repo.page_companies(created.id, page=1, page_size=10)
+
+    detail = repo.company_detail(created.id, page.items[0].id)
+
+    assert detail is not None
+    ledger = detail.enrichment
+    assert ledger.source_id == "baidu"
+    assert ledger.fields["registered_capital"] == "1000万人民币"
+    assert ledger.fields["matched_title"] == "邢台云杉网络科技"
+    assert "tavily_score" not in ledger.fields
+
+
+def test_company_detail_empty_ledger_without_enrichment(repo_factory):
+    repo = repo_factory()
+    created = repo.create_list("找华东的 SaaS 公司", "company", 5)
+    _complete_like_hydrate(repo, created.id)
+    page = repo.page_companies(created.id, page=1, page_size=10)
+
+    detail = repo.company_detail(created.id, page.items[0].id)
+
+    assert detail is not None
+    assert detail.enrichment.source_id == ""
+    assert detail.enrichment.fields == {}

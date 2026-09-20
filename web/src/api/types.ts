@@ -164,6 +164,13 @@ export interface ConditionEvaluation {
   references: ReferenceItem[];
 }
 
+/** 富化台账：哪个源补了什么字段。照面字段来自网页摘要，matched_title 供人工核对。 */
+export interface EnrichmentLedger {
+  source_id: string;
+  source_label: string;
+  fields: Record<string, string>;
+}
+
 export interface TargetCompanyDetail {
   company: TargetCompany;
   references: ReferenceItem[];
@@ -171,6 +178,7 @@ export interface TargetCompanyDetail {
   outreach: OutreachPlan | null;
   research_results: ResearchResult[];
   evaluations: ConditionEvaluation[];
+  enrichment?: EnrichmentLedger;
 }
 
 /**

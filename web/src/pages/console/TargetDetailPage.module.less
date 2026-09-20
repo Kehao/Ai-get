@@ -1033,6 +1033,33 @@
   }
 }
 
+/* 富化台账：web/aiqicha 渠道回填的注册字段，逐项「标签 + 值」两列。 */
+.ledgerList {
+  margin: 0;
+
+  .ledgerItem {
+    display: flex;
+    gap: @space-3;
+    font-size: @font-xs;
+
+    + .ledgerItem {
+      margin-top: 6px;
+    }
+  }
+
+  dt {
+    width: 60px;
+    flex: none;
+    color: @color-text-tertiary;
+  }
+
+  dd {
+    margin: 0;
+    color: @color-text;
+    word-break: break-word;
+  }
+}
+
 .infoBlock {
   margin: 0;
   padding: @space-3;

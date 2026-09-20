@@ -60,6 +60,13 @@ const EVAL_TONES: Record<string, string> = {
   不确定: 'evalUnsure',
   不符合: 'evalMiss',
 };
+/** 富化台账字段名 → 展示标签（registered_capital 等由 web/aiqicha 渠道下发）。 */
+const ENRICH_FIELD_LABELS: Record<string, string> = {
+  registered_capital: '注册资本',
+  legal_rep: '法定代表人',
+  founded: '成立时间',
+  matched_title: '命中标题',
+};
 const FILTER_OPTIONS = [
   { key: '', label: '全部结论' },
   { key: '明确符合', label: '明确符合' },
@@ -159,6 +166,11 @@ const TargetDetailPage = (): JSX.Element => {
   // References / 智能触达 / 智能调研 / 准入条件评估这几块在两种档案里是**同形**的，直接读原始数据；
   // 只有「头部 + 档案字段」要看行结构，交给展示模型适配。
   const dossier = rowDetail.data;
+  // 富化台账只存在于公司档案；用类型谓词收窄出公司分支，避免在 JSX 里反复判型。
+  const companyDossier = useMemo(
+    () => (dossier !== null && !isPersonDetail(dossier) ? dossier : null),
+    [dossier],
+  );
   const dossierView = useMemo(
     () => (dossier === null ? null : isPersonDetail(dossier) ? toPersonDossier(dossier) : toCompanyDossier(dossier)),
     [dossier],
@@ -1060,6 +1072,28 @@ const TargetDetailPage = (): JSX.Element => {
                           </div>
                         ))}
                       </dl>
+
+                      {companyDossier?.enrichment && Object.keys(companyDossier.enrichment.fields).length > 0 ? (
+                        <section className={styles.dossierBlock}>
+                          <span className={styles.blockLabel}>
+                            富化台账 · {companyDossier.enrichment.source_label || '网络检索'}
+                          </span>
+                          <dl className={styles.ledgerList}>
+                            {Object.entries(companyDossier.enrichment.fields).map(([key, value]) => (
+                              <div key={key} className={styles.ledgerItem}>
+                                <dt>{ENRICH_FIELD_LABELS[key] ?? key}</dt>
+                                <dd>{value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                          {companyDossier.enrichment.fields.matched_title ? (
+                            <p className={styles.blockMeta}>
+                              注意：以上注册字段取自网页检索命中的「{companyDossier.enrichment.fields.matched_title}
+                              」，存在同名校验风险，请人工核对。
+                            </p>
+                          ) : null}
+                        </section>
+                      ) : null}
 
                       <section className={styles.dossierBlock}>
                         <span className={styles.blockLabel}>智能调研</span>
