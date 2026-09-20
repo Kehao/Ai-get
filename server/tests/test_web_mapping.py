@@ -50,6 +50,7 @@ def test_extract_domain(url, expected):
         ("nbd.com.cn", True),
         ("tech.huanqiu.com", True),
         ("www.cls.cn", True),
+        ("www.chinastarmarket.cn", True),  # 科创板日报
     ],
 )
 def test_non_company_domain(domain, expected):

@@ -102,6 +102,7 @@ NON_COMPANY_DOMAINS = frozenset(
         "donews.com",
         "techweb.com.cn",
         "zhiding.cn",
+        "chinastarmarket.cn",
         # 招聘平台：标题主体是职位，不是公司
         "zhipin.com",
         "lagou.com",
