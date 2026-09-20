@@ -83,6 +83,25 @@ NON_COMPANY_DOMAINS = frozenset(
         "thepaper.cn",
         "caixin.com",
         "yicai.com",
+        # 财经媒体与资讯门户：中文网页检索里最大的噪声源，
+        # 它们几乎占满了「行业 + 融资 + 公司」这类查询的头部结果。
+        "ce.cn",
+        "nbd.com.cn",
+        "huanqiu.com",
+        "stcn.com",
+        "cls.cn",
+        "jiemian.com",
+        "21jingji.com",
+        "eeo.com.cn",
+        "hexun.com",
+        "jrj.com.cn",
+        "xinhuanet.com",
+        "people.com.cn",
+        "chinanews.com.cn",
+        "cyzone.cn",
+        "donews.com",
+        "techweb.com.cn",
+        "zhiding.cn",
         # 招聘平台：标题主体是职位，不是公司
         "zhipin.com",
         "lagou.com",
@@ -213,6 +232,21 @@ def extract_domain(url: str) -> str:
     return netloc if "." in netloc else ""
 
 
+def registrable_domain(domain: str) -> str:
+    """注册域：`ent.online.360.cn` → `360.cn`，`finance.sina.com.cn` → `sina.com.cn`。
+
+    两个用途，都必须走它：**去掉子域**（同一家公司的 `saas.360.cn` 与
+    `ent.online.360.cn` 曾在列表里占两行）与**查站点名单**（最后两段在
+    `.com.cn` 域名上是 `com.cn`，拿它查表等于整份名单失效——实测漏过一批媒体站）。
+    """
+    parts = [part for part in domain.lower().split(".") if part]
+    if len(parts) <= 2:
+        return ".".join(parts)
+    if parts[-1] in _COUNTRY_TLDS and parts[-2] in _SECOND_LEVEL_SUFFIXES:
+        return ".".join(parts[-3:])
+    return ".".join(parts[-2:])
+
+
 def is_non_company_domain(domain: str) -> bool:
     """域名（或其注册域）命中媒体/UGC/招聘清单。"""
     return _matches_registrable(domain, NON_COMPANY_DOMAINS)
@@ -224,9 +258,13 @@ def is_directory_domain(domain: str) -> bool:
 
 
 def _matches_registrable(domain: str, table: frozenset[str]) -> bool:
-    parts = domain.split(".")
-    registrable = ".".join(parts[-2:]) if len(parts) >= 2 else domain
-    return registrable in table
+    """按**注册域**匹配。必须复用 `registrable_domain` 而不是自取最后两段：
+
+    `finance.sina.com.cn` 的最后两段是 `com.cn`，拿它查表永远不会命中，
+    于是整份名单在 `.com.cn` / `.cn` 域名上集体失效——实测漏掉了新浪财经、
+    中国经济网、每日经济新闻等一大批媒体站。
+    """
+    return registrable_domain(domain) in table
 
 
 def _matches_host(domain: str, table: frozenset[str]) -> bool:
@@ -260,20 +298,6 @@ def name_from_title(title: str, domain: str = "") -> str:
     if _agrees_with_domain(segment, domain):
         return segment
     return ""
-
-
-def registrable_domain(domain: str) -> str:
-    """注册域：`ent.online.360.cn` → `360.cn`。
-
-    去重键用它而不是完整 host：同一家公司的不同子域（`saas.360.cn` 与
-    `ent.online.360.cn`）在列表里会出现两行「360 安全云」——实测踩过。
-    """
-    parts = [part for part in domain.lower().split(".") if part]
-    if len(parts) <= 2:
-        return ".".join(parts)
-    if parts[-1] in _COUNTRY_TLDS and parts[-2] in _SECOND_LEVEL_SUFFIXES:
-        return ".".join(parts[-3:])
-    return ".".join(parts[-2:])
 
 
 def name_from_domain(domain: str) -> str:
@@ -327,8 +351,5 @@ def _agrees_with_domain(segment: str, domain: str) -> bool:
 
 
 def _registrable_label(domain: str) -> str:
-    """域名的主段：`idc4.com` → `idc4`，`xxx.com.cn` → `xxx`。"""
-    parts = [part for part in domain.lower().split(".") if part]
-    if len(parts) >= 3 and parts[-1] in _COUNTRY_TLDS and parts[-2] in _SECOND_LEVEL_SUFFIXES:
-        return parts[-3]
-    return parts[-2] if len(parts) >= 2 else (parts[0] if parts else "")
+    """注册域的主段：`idc4.com` → `idc4`，`xxx.com.cn` → `xxx`。"""
+    return registrable_domain(domain).split(".", 1)[0]

@@ -43,6 +43,13 @@ def test_extract_domain(url, expected):
         ("news.mydrivers.com", True),
         ("yunshan.net", False),
         ("aiqicha.baidu.com", True),  # 归属 baidu.com 这条媒体规则
+        # `.com.cn` / `.cn` 域名：注册域是三层，最后两段是 com.cn——
+        # 曾经因为拿最后两段查表，导致整份名单在这些域名上集体失效。
+        ("finance.sina.com.cn", True),
+        ("finance.ce.cn", True),
+        ("nbd.com.cn", True),
+        ("tech.huanqiu.com", True),
+        ("www.cls.cn", True),
     ],
 )
 def test_non_company_domain(domain, expected):
