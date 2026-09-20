@@ -61,6 +61,7 @@ from ..providers import (
     call_source,
     company_source,
     contact_source,
+    enrich_companies,
     manifests,
     person_source,
 )
@@ -707,6 +708,9 @@ def _recall(
     companies: list[CompanyRecord] = [
         record for record in company_result.items if _record_key(record) not in blocked
     ]
+    # P5 字段补齐：召回给「是谁」，补齐源给「还有什么字段」。没有注册补齐源
+    # （PDL key 未配置）时它原样返回，不会多一次调用；补齐失败也不影响召回结果。
+    companies = enrich_companies(companies)
     return companies[:limit], company_result.source_id
 
 

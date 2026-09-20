@@ -6,3 +6,8 @@ python-multipart==0.0.20
 # 显式声明，虽然 uvicorn[standard] 也会带上它：
 # app.config 直接用 load_dotenv() 读 server/.env，换成不带 extra 的 uvicorn 就会断。
 python-dotenv==1.2.3
+
+# 真实数据源官方 SDK（P4 召回 / P5 字段补齐）。未配置对应 key 时不生效，但依赖随包声明，
+# 避免「配了 key 还要现场装包」的部署坑。
+tavily-python==0.8.4
+peopledatalabs==6.4.13

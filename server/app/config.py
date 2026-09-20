@@ -43,6 +43,18 @@ MINING_PHASE_WEIGHTS = {
 # 默认数据源 id。接入真实数据源后，用环境变量切过去即可，业务代码无需改动。
 DEFAULT_DATA_SOURCE = os.environ.get("AIGET_DATA_SOURCE", "mock")
 
+# ── 真实数据源凭据（P4/P5）─────────────────────────────────────────────────
+# 留空 = 该源不注册，业务链路自动退回 mock，不会报错。
+# Tavily（P4 召回）：https://tavily.com 免费层每月 1000 credits。
+# PDL（P5 字段补齐）：https://peopledatalabs.com 免费层每月 100 credits，
+# 仅 base 字段（联系方式档位要付费，免费层拿不到就如实显示缺失）。
+TAVILY_API_KEY = os.environ.get("AIGET_TAVILY_API_KEY", "")
+PDL_API_KEY = os.environ.get("AIGET_PDL_API_KEY", "")
+
+# 真实源按次计费，同一企业的查询结果必须落缓存：TTL 内重复命中零成本。
+# P7 的持久化缓存落地后，这里只是把存储介质从进程内字典换成 SQLite。
+SOURCE_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
+
 COMPANY_COUNT_OPTIONS = (25, 100, 500, 1000)
 DEFAULT_COMPANY_COUNT = COMPANY_COUNT_OPTIONS[0]
 

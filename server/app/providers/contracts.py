@@ -31,6 +31,7 @@ SourceCapability = Literal[
     "company_search",  # 公司/机构线索召回
     "person_search",  # 人物职业档案召回（按画像找「人」，不是按域名补联系人）
     "contact_search",  # 按域名捞联系人
+    "company_enrich",  # 按域名/名称补齐单家企业的字段（L2 firmographic）
     "web_search",  # 公开网页检索与正文抽取
     "trade_search",  # 海关/贸易记录（预留，尚未实现）
     "news_search",  # 新闻与舆情（预留，尚未实现）
@@ -274,6 +275,32 @@ class WebQuery:
     locale: str = "zh"
 
 
+@dataclass(frozen=True, slots=True)
+class EnrichTarget:
+    """一条待补齐的企业指征。域名与名称至少有一个；两个都有时域名优先（更精确）。"""
+
+    domain: str = ""
+    name: str = ""
+
+    @property
+    def cache_key(self) -> str:
+        """同一企业的缓存键：域名最稳，缺失时退化到名称。"""
+        return (self.domain.strip().lower() or self.name.strip().lower())
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyEnrichQuery:
+    """字段补齐的入参：一批企业指征，逐家富化。
+
+    与 `CompanyQuery` 刻意分开：召回回答「这批候选是谁」，补齐回答「这家企业还有
+    什么字段」——两者的计费模型完全不同（召回按查询次数，补齐按企业条数），
+    合并成一个查询会让缓存键和配额控制都变得含糊。
+    """
+
+    targets: tuple[EnrichTarget, ...]
+    locale: str = "zh"
+
+
 # ── 数据源清单 ────────────────────────────────────────────────────────────
 
 
@@ -350,12 +377,26 @@ class WebSearchSource(Protocol):
     def search_web(self, query: WebQuery) -> list[WebDocument]: ...
 
 
+class CompanyEnrichSource(Protocol):
+    """具备企业字段补齐能力的数据源（L2 firmographic：Apollo / PDL / 企查查）。
+
+    返回的 `CompanyRecord` 只承载**该源实际拿到的字段**，拿不到的留空——
+    编排层按 `missing_fields` 决定是否向更贵的源继续求助，所以这里
+    绝不能用默认值假装字段拿到了。
+    """
+
+    manifest: SourceManifest
+
+    def enrich_companies(self, query: CompanyEnrichQuery) -> list[CompanyRecord]: ...
+
+
 # 能力名 → 该能力必须具备的方法名。registry 用它做注册期校验，
 # 把「声明了能力却没实现方法」这类错误提前到启动时暴露。
 CAPABILITY_METHODS: dict[SourceCapability, str] = {
     "company_search": "search_companies",
     "person_search": "search_people",
     "contact_search": "search_contacts",
+    "company_enrich": "enrich_companies",
     "web_search": "search_web",
     "trade_search": "search_trade_records",
     "news_search": "search_news",
