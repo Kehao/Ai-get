@@ -30,7 +30,7 @@ Ai-get 从目标客户挖掘、企业背调、智能体训练，到多渠道触�
 | 前端 | Vite 6 + React 18 + TypeScript + Less（CSS Modules）+ React Router |
 | 图标 | lucide-react |
 | 后端 | FastAPI + Pydantic v2 + Uvicorn |
-| 存储 | 进程内存（无数据库） |
+| 存储 | 进程内存 + SQLite（挖掘列表状态、数据源缓存落库；`companies` / `company_enrichments` 两张表已建 DDL 但代码未接入，见 `server/schema/README.md`） |
 
 ## 目录结构
 
@@ -134,7 +134,10 @@ L0 的提示词与它的机器可读契约放在 **`skills/profile-to-company-cr
 
 ## 已知限制
 
-- **无数据库**：所有数据是进程内存单例，服务重启即回到演示初始态。
+- **存储不是纯内存**：`server/schema/` 下的 5 张表里，`source_cache` / `mining_lists` /
+  `mining_rows` 已在用（列表状态写穿 + 启动水合、缓存跨进程生效），
+  所以挖掘列表在服务重启后仍可回看；`companies` / `company_enrichments` 只有 DDL，
+  代码尚未接入。**账号与偏好设置**等仍是内存单例，重启回初始态。
 - **数据不按用户隔离**：新注册的账号能看到演示账号的数据。
 - 进度类接口不跑后台任务，由已用时长按比例推算，用于演示。
 - 未实现参考站的积分/算力与「安装 Skill」两个模块。
