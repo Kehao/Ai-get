@@ -2,7 +2,7 @@
 
 ## 提示词的真源在技能目录，不在这个文件里
 
-提示词正文与契约表放在 **`skills/`** 下的两个项目级技能目录：
+提示词正文与契约表放在 **`server/skills/`** 下的两个项目级技能目录（相对路径以 server/ 为基准）：
 
 - 企业模式：`skills/profile-to-company-criteria/`
 - 个人模式：`skills/profile-to-person-criteria/`
@@ -200,8 +200,8 @@ def prompt_dir(mode: str = "company") -> Path:
     """提示词目录的绝对路径，供读文件用。相对路径以仓库根为基准。"""
     path = Path(prompt_dir_label(mode))
     if not path.is_absolute():
-        # app/llm/prompts.py → parents[3] 是仓库根
-        path = Path(__file__).resolve().parents[3] / path
+        # app/llm/prompts.py → parents[2] 是 server/（skills/ 与 schema/ 都在其下）
+        path = Path(__file__).resolve().parents[2] / path
     return path
 
 

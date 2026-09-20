@@ -46,7 +46,7 @@
 ## 与 LLM 的关系
 
 与会社模式同一套「**LLM 优先、规则引擎兜底**」：`build_person_criteria_detailed()`
-先尝试用 LLM 按人物契约（`skills/profile-to-person-criteria/`，mode=people）生成标准，
+先尝试用 LLM 按人物契约（`server/skills/profile-to-person-criteria/`，mode=people）生成标准，
 输出逐条过白名单校验（category ∈ 人物枚举、weight 1..5、seniority.expected ∈ 职级阶梯、
 background/signal 强制 lenient、通过数 ≥ 2），不满足则整批弃用并降级到本模块的规则引擎。
 
