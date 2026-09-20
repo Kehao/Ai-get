@@ -62,6 +62,19 @@ export const truncate = (text: string, limit: number): string =>
 /** 去掉协议前缀的域名，用于表格中展示网址。 */
 export const toDisplayDomain = (url: string): string => url.replace(/^https?:\/\//, '');
 
+/**
+ * 评估卡来源 chip 的展示文案：域名 + 路径，超长在中间截断。
+ * 参考站的来源 chip 就是这种「linkedin.com/in/xxx」形状，只显示地址不显示标题；
+ * 完整标题放在 `title` 提示里，悬停可读。
+ */
+export const toSourcePill = (url: string, limit = 36): string => {
+  const bare = toDisplayDomain(url).replace(/\/+$/, '');
+  if (bare.length <= limit) return bare;
+  const head = Math.ceil((limit - 1) / 2);
+  const tail = limit - 1 - head;
+  return `${bare.slice(0, head)}…${bare.slice(-tail)}`;
+};
+
 /** 取域名首字母作为企业标识块的文字。 */
 export const toDomainInitial = (url: string): string => {
   const domain = toDisplayDomain(url);

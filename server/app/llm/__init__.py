@@ -44,6 +44,16 @@ from .prompts import (
     render_user_prompt,
 )
 
+
+def person_prompt_dir_label() -> str:
+    """人物契约目录的可读标识（状态接口用）。"""
+    return prompt_dir_label("people")
+
+
+def person_prompt_version() -> str:
+    """人物契约的版本号（状态接口用）。"""
+    return prompt_version("people")
+
 __all__ = [
     "Completion",
     "GenerationResult",
@@ -57,6 +67,8 @@ __all__ = [
     "generate_criteria",
     "get_settings",
     "load_asset",
+    "person_prompt_dir_label",
+    "person_prompt_version",
     "prompt_dir",
     "prompt_dir_label",
     "prompt_version",

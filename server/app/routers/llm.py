@@ -34,5 +34,7 @@ def read_llm_status(user: User = Depends(current_user)) -> LlmStatus:
         judge_enabled=settings.judge_enabled,
         prompt_version=llm.prompt_version(),
         prompt_dir=llm.prompt_dir_label(),
+        person_prompt_version=llm.person_prompt_version(),
+        person_prompt_dir=llm.person_prompt_dir_label(),
         rounds=LlmRounds(**counts.describe()),
     )

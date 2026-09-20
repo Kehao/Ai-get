@@ -1,7 +1,0 @@
-{
-  "_violates": "business 的 lenient 给了 false。公开资料没写到某项特征 ≠ 该特征不成立；判成「不符合」会让所有冷门行业集体掉档",
-  "criteria": [
-    {"category": "geo", "name": "地域：杭州", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["杭州"], "expected": "杭州", "lenient": false, "note": ""},
-    {"category": "business", "name": "业务：提供订阅制服务", "question": "企业是否订阅？", "weight": 3, "tokens": ["订", "阅"], "expected": "", "lenient": false, "note": ""}
-  ]
-}

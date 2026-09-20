@@ -733,6 +733,63 @@ def _leftover_segments(text: str, consumed: Sequence[str]) -> list[str]:
     return segments[:2]
 
 
+# 可触达性这条标准的名称。`_with_reachability` 与「回传的条件名要跳过」两处共用一份字面量：
+# 名字对不上时，条件面板回传的「可触达性」会被当成新条件，多出一条重复的宽松标准。
+REACHABILITY_LABEL = "可触达性"
+
+
+def _appears(term: str, text: str) -> bool:
+    """词是否出现在正文里。拉丁词大小写不敏感，与人物侧同一口径。"""
+    if term.isascii() and term.isalpha():
+        return term.lower() in text.lower()
+    return term in text
+
+
+def _is_round_tripped_label(text: str, criteria: list[Criterion]) -> bool:
+    """判断这条「用户条件」是不是引擎自己下发、又被前端原样回传的条件名。
+
+    条件面板把当前生效的条件名（「地域：杭州」「行业：企业服务与软件」「可触达性」……）
+    一并回传，它们**不是用户新增的条件**；若不识别，每条都会再被包成一条宽松标准，
+    权重表凭空翻倍、结论随之漂移。只跳过能对上已有标准的：带未知取值的同类条件
+    （如「行业：必须有 ISO 认证」）仍然按用户条件收下，不会被静默丢掉。
+    """
+    for item in criteria:
+        if text == item.name:
+            return True
+    # 可触达性由引擎在合并之后才补，比对时列表里可能还没有这条，单独认它的名字。
+    if text == REACHABILITY_LABEL:
+        return True
+    prefix, separator, remainder = text.partition("：")
+    if not separator:
+        return False
+    for item in criteria:
+        if not item.name.startswith(f"{prefix}："):
+            continue
+        if remainder == item.expected or _appears(remainder, item.name):
+            return True
+    return False
+
+
+# 「类别前缀」的形状：不超过 6 个字、不含空白与冒号的短词 + 中文冒号。
+# 只按形状剥开头反复出现的前缀段（「业务特征：业务特征：X」→「X」），
+# 条件本体不受影响；剥完为空（文本只有前缀）时由调用方放弃这条。
+_LABEL_HEAD = re.compile(r"^[^：\s]{1,6}：")
+
+
+def _strip_name_prefixes(text: str) -> str:
+    """剥掉条件文本开头已经包过的类别前缀，保证包装是幂等的。
+
+    「业务特征：业务特征：订阅制」→「订阅制」，随后只会再包一层，
+    名字回到「业务特征：订阅制」并从此稳定——无论 LLM 每次用什么前缀词。
+    """
+    stripped = text.strip()
+    while True:
+        match = _LABEL_HEAD.match(stripped)
+        if match is None:
+            return stripped
+        stripped = stripped[match.end() :].lstrip()
+
+
 def _merge_user_condition(criteria: list[Criterion], raw: str) -> list[Criterion]:
     """把用户手写的一条判断条件并入标准清单。
 
@@ -741,6 +798,21 @@ def _merge_user_condition(criteria: list[Criterion], raw: str) -> list[Criterion
     """
     text = raw.strip()
     if not text:
+        return criteria
+
+    if _is_round_tripped_label(text, criteria):
+        return criteria
+
+    # 条件面板回传的文本可能已经包过类别前缀。不剥掉就再包一层，
+    # 每次保存都会出现「业务特征：业务特征：…」。按形状剥（LLM 每次起的
+    # 前缀词可能不同，词表靠不住），剥完的才是条件本体。
+    text = _strip_name_prefixes(text)
+    if not text:
+        return criteria
+
+    # 剥完前缀后按**内容**去重：「意向信号：正在招聘」和「动态：正在招聘」
+    # 是同一条条件，不能各包一层变成两条重复标准。
+    if any(_appears(text, item.name) for item in criteria):
         return criteria
 
     lowered = {item.name for item in criteria}
@@ -833,7 +905,7 @@ def _with_reachability(criteria: list[Criterion]) -> list[Criterion]:
         *criteria,
         Criterion(
             id="criterion-reachability",
-            name="可触达性",
+            name=REACHABILITY_LABEL,
             question="是否能获取到可用的公开联系方式？",
             category="reachability",
             weight=CATEGORY_WEIGHTS["reachability"],

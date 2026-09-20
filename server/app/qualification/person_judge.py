@@ -65,7 +65,8 @@ def judge_person(criteria: Sequence[Criterion], record: PersonRecord) -> Judgmen
 def _judge_one(criterion: Criterion, record: PersonRecord) -> CriterionVerdict:
     handler = _HANDLERS.get(criterion.category, _judge_background)
     verdict, explanation, reference_count = handler(criterion, record)
-    source_label, source_url = _source_of(criterion, record)
+    references = _sources_of(criterion, record)
+    source_label, source_url = _present(references, record)
     return CriterionVerdict(
         criterion=criterion,
         verdict=verdict,
@@ -73,6 +74,7 @@ def _judge_one(criterion: Criterion, record: PersonRecord) -> CriterionVerdict:
         reference_count=reference_count,
         source_label=source_label,
         source_url=source_url,
+        references=references,
     )
 
 
@@ -239,25 +241,55 @@ def _rank(level: str) -> int:
     return SENIORITY_LADDER.index(level) if level in SENIORITY_LADDER else len(SENIORITY_LADDER)
 
 
-def _source_of(criterion: Criterion, record: PersonRecord) -> tuple[str, str]:
-    """为每条标准挑一条最相关的证据。
+def _sources_of(criterion: Criterion, record: PersonRecord) -> tuple[tuple[str, str], ...]:
+    """为每条标准收集**可回溯的公开来源**（标题, 网址），按与该条件的相关度排序。
 
-    可触达性指向所属机构的团队页（那是找到联系方式的地方），其余标准指向
-    这条档案本身；两者都能回溯到具体网址，而不是一句「公开资料显示」。
+    参考站的人物评估卡每条下挂多条来源 chip（职业档案页、本人公开动态、招聘页……），
+    这里照同样的形状产出：
+
+    - 「可触达性」优先指向能找到联系方式的地方（所属机构团队页）；
+    - 「意向信号」优先指向本人公开动态（新上任、招聘这类线索就发在那里）；
+    - 其余标准以职业档案本身开头，团队页与动态作为交叉佐证跟在后面。
     """
     evidence = record.evidence
-    preferred = next((item for item in evidence if "/team" in item.url), None)
+    if not evidence:
+        return ()
+
+    team = next((item for item in evidence if "/team" in item.url), None)
+    post = next((item for item in evidence if "/posts/" in item.url), None)
+    profile = evidence[0]
+
     if criterion.category == "reachability":
-        chosen = preferred or (evidence[0] if evidence else None)
+        ordered = (team or profile, post)
+    elif criterion.category == "signal":
+        # 动态优先；档案页只在动态已作为首条时再补一次交叉，避免重复。
+        extras = (profile, team) if post is not None else (profile,)
+        ordered = (post or profile, *extras)
     else:
-        chosen = (evidence[0] if evidence else None) or preferred
+        ordered = (profile, team, post)
 
-    if chosen is None:
+    picked: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for item in ordered:
+        if item is None or not item.url or item.url in seen:
+            continue
+        seen.add(item.url)
+        picked.append((item.title, item.url))
+
+    return tuple(picked[:3])
+
+
+def _present(references: tuple[tuple[str, str], ...], record: PersonRecord) -> tuple[str, str]:
+    """把来源列表的第一条转成（label, url）的旧形状，供表格等单链接场景复用。
+
+    标签沿用「来源 · 域名」的旧口径，使已有界面的展示不因这次改造而变。
+    """
+    if not references:
         return "无可用来源", ""
-
-    domain = urlsplit(chosen.url).netloc or urlsplit(record.source_url).netloc
+    _title, url = references[0]
+    domain = urlsplit(url).netloc or urlsplit(record.source_url).netloc
     label = record.source_label or "公开档案"
-    return (f"{label} · {domain}" if domain else label), chosen.url
+    return (f"{label} · {domain}" if domain else label), url
 
 
 def _compose_reason(verdicts: tuple[CriterionVerdict, ...], score: Score) -> str:

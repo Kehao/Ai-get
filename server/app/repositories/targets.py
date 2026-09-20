@@ -518,10 +518,14 @@ class TargetListRepository:
             query = state.target_list.query
             count = state.target_list.requested_count or len(state.rows)
             columns = state.columns
+            # 重建标准必须带上已保存的条件文本——只按 query 重建会把用户配置的条件
+            # 全部丢掉，「改完条件点挖掘」得到的结果就像没改过一样。
+            # 文本里有引擎自产的条件名：合并侧的回传守卫会跳过，用户条件则幂等重建。
+            saved_conditions = [item.text for item in state.target_list.condition_items]
             seed = _seed_from(f"{list_id}-{int(time.time() * 1000)}")
             now = datetime.now(timezone.utc)
 
-        build = _build_criteria(mode, query)
+        build = _build_criteria(mode, query, saved_conditions)
         criteria = list(build.criteria)
         records, source_id = _recall(mode=mode, query=query, limit=count, seed=seed, criteria=criteria)
         rows, judgments = _build_rows(mode, records, criteria, columns, seed, created_at=now)

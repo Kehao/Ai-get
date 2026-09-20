@@ -1,13 +1,13 @@
 {
-  "version": "criteria/v1",
+  "version": "criteria/v2",
 
   "_comment": [
-    "「画像 → 加权判定标准」的机器可读契约。这是唯一真源：",
-    "  · prompts/criteria.system.md 的契约表由它渲染（服务端 app/llm/prompts.py），",
-    "  · scripts/validate_criteria.py 的校验规则由它驱动。",
-    "改契约只改这一个文件，提示词与校验器同时跟随，不会漂移。",
+    "「企业画像 → 加权判定标准」的机器可读契约。这是唯一真源：",
+    "  prompts/criteria.system.md 的契约表由它渲染（服务端 app/llm/prompts.py，mode=company）。",
+    "改契约只改这一个文件，提示词同时跟随，不会漂移。",
     "移植到新领域时改：categories（维度枚举与各自的 expected_kind）、min/max_criteria。",
-    "注意：各维度的默认权重不在这里——它归运行时（CATEGORY_WEIGHTS），渲染时注入提示词。"
+    "注意：各维度的默认权重不在这里——它归运行时（CATEGORY_WEIGHTS），渲染时注入提示词。",
+    "白名单校验在服务端 qualification/criteria.py（本目录刻意不放独立校验器副本）。"
   ],
 
   "min_criteria": 2,

@@ -721,6 +721,9 @@
   cursor: pointer;
 
   &:disabled {
+    // 不可挖掘（没有条件或正在挖）时必须灰显——否则看着能点、点了没反应。
+    background: @color-border;
+    color: @color-text-tertiary;
     cursor: not-allowed;
   }
 }
@@ -1193,13 +1196,29 @@
   line-height: 1.65;
 }
 
+// 来源 chip 容器：参考站的评估卡下沿挂一排可点开的来源胶囊，允许换行。
+.evalSources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-top: 6px;
+}
+
 .evalSource {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  margin-top: 6px;
-  font-size: 11px;
+  max-width: 100%;
+  padding: 2px 7px;
+  border: 1px solid @color-border;
+  border-radius: 999px;
+  font-size: 10px;
   color: @color-accent;
+  white-space: nowrap;
+
+  svg {
+    flex: none;
+  }
 
   &:hover {
     text-decoration: underline;

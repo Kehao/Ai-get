@@ -54,6 +54,7 @@ def build_evaluations(judgment: Judgment | None) -> list[ConditionEvaluation]:
             source_label=item.source_label,
             source_url=item.source_url,
             weight=item.criterion.weight,
+            references=[ReferenceItem(title=title, url=url) for title, url in item.references],
         )
         for item in judgment.verdicts
     ]

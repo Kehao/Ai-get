@@ -1,6 +1,0 @@
-{
-  "_violates": "只有 1 条标准，低于下限 2。只剩一条时「加权得分」失去意义，通过数量不足应当整批弃用、走兜底",
-  "criteria": [
-    {"category": "geo", "name": "地域：杭州", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["杭州"], "expected": "杭州", "lenient": false, "note": ""}
-  ]
-}

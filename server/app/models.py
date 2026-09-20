@@ -230,6 +230,8 @@ class ConditionEvaluation(BaseModel):
     """准入条件评估：某条标准在该企业上的判定结果与依据。
 
     `weight` 与 `condition` 一起复现了这一行的来源标准，使「为什么匹配」可逐条复核。
+    `references` 是这条结论的**全部可回溯来源**（参考站评估卡下方的一排来源 chip）；
+    为空时前端退回展示 `source_label` / `source_url` 这条单链接。
     """
 
     condition: str
@@ -239,6 +241,7 @@ class ConditionEvaluation(BaseModel):
     source_label: str
     source_url: str
     weight: int = 0
+    references: list[ReferenceItem] = Field(default_factory=list)
 
 
 class TargetColumn(BaseModel):
@@ -589,6 +592,11 @@ class LlmStatus(BaseModel):
     # 提示词所在目录（可读标识）。提示词是仓库里的技能资产，可能被换掉，
     # 所以要和 prompt_version 一起报出来，才能回答「这批标准用的是哪份提示词」。
     prompt_dir: str
+    # 人物模式有**另一份契约**（找人维度与会社不重叠），版本与目录单独报出，
+    # 否则「找人列表的标准标签是 person-criteria/v1，会社状态接口却只报 criteria/v1」
+    # 这类问题无从排查。
+    person_prompt_version: str = ""
+    person_prompt_dir: str = ""
     rounds: LlmRounds
 
 

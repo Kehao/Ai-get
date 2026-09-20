@@ -1,8 +1,0 @@
-{
-  "_violates": "越界输出 reachability。它由代码统一补，不让模型自作主张——模型一旦输出它，就会与代码补的那条重复计分",
-  "criteria": [
-    {"category": "geo", "name": "地域：杭州", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["杭州"], "expected": "杭州", "lenient": false, "note": ""},
-    {"category": "industry", "name": "行业：企业服务与软件", "question": "主营业务是否属于企业服务或软件？", "weight": 5, "tokens": ["SaaS", "企业服务"], "expected": "企业服务与软件", "lenient": false, "note": ""},
-    {"category": "reachability", "name": "可触达性", "question": "是否能获取到公开联系方式？", "weight": 1, "tokens": [], "expected": "", "lenient": false, "note": ""}
-  ]
-}

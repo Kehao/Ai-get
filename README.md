@@ -104,7 +104,7 @@ cp server/.env.example server/.env
 | `AIGET_LLM_TIMEOUT_SECONDS` | `30` | 超时即降级，不阻塞任务创建 |
 | `AIGET_LLM_MAX_TOKENS` | `4096` | 输出上限；截断会导致整批标准降级 |
 | `AIGET_LLM_JUDGE_ENABLED` | `false` | L3 逐条判定的 LLM 兜底，调用量大 |
-| `AIGET_LLM_PROMPT_DIR` | `skills/profile-to-weighted-criteria` | 提示词技能目录；相对路径以**仓库根**为基准。换领域时指向另一份技能即可，不必改代码 |
+| `AIGET_LLM_PROMPT_DIR` | `skills/profile-to-company-criteria` | 提示词技能目录；相对路径以**仓库根**为基准。换领域时指向另一份技能即可，不必改代码 |
 
 ### 准入标准由谁生成
 
@@ -120,7 +120,7 @@ cp server/.env.example server/.env
 
 ### 提示词放在哪
 
-L0 的提示词与它的机器可读契约放在 **`skills/profile-to-weighted-criteria/`**，
+L0 的提示词与它的机器可读契约放在 **`skills/profile-to-company-criteria/`**，
 后端在运行时读取并渲染（`server/app/llm/prompts.py` 只是加载器，不内嵌提示词正文）。
 该目录同时被独立校验器 `scripts/validate_criteria.py` 读取，因此
 「模型按什么契约输出」与「校验器按什么契约拒绝」永远同源。详见该目录的 `SKILL.md`。

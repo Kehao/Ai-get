@@ -358,7 +358,7 @@ P1–P3 的观感提升主要来自**标准被展示出来**，而不是标准�
 | 7.0 让分数诚实（未校验的 lenient 记 0 并拦住「明确符合」） | ❌ 未做 | **这是路线乙的前置条件，目前仍是缺口**：`lenient` 未命中给 0.5 而非 0，一家不符合要求的公司仍可能被抬进「明确符合」。标准生成换成了 LLM，但打分口径没变 |
 
 **提示词已外置到技能目录。** L0 的 system / user 提示词与机器可读契约不再内嵌在 `app/llm/prompts.py`，
-而是放在 `skills/profile-to-weighted-criteria/`：
+而是放在 `skills/profile-to-company-criteria/`：
 
 | 文件 | 角色 |
 | --- | --- |
@@ -375,11 +375,11 @@ P1–P3 的观感提升主要来自**标准被展示出来**，而不是标准�
 契约与规则引擎自己的表（`_LLM_CATEGORIES` / `_MAX_PER_CATEGORY` / `FUNDING_KEYWORDS` 的各阶段）
 在加载时**逐项断言**，不一致直接抛 `PromptAssetError`。理由：提示词属于**仓库资产**而非会抖动的
 外部依赖，缺失或自相矛盾说明检出损坏，应当立刻炸掉——若容忍它降级，所有人都会以为 LLM 正在工作，
-而实际上提示词根本没被读到。默认目录 `skills/profile-to-weighted-criteria`（相对仓库根解析），
+而实际上提示词根本没被读到。默认目录 `skills/profile-to-company-criteria`（相对仓库根解析），
 可用 `AIGET_LLM_PROMPT_DIR` 指向另一份技能目录以换领域，无需改代码。
 
 实测（`/api/llm/status` + 一次真实建任务）：`prompt_version=criteria/v1`、
-`prompt_dir=skills/profile-to-weighted-criteria`、`criteria_source=llm`、
+`prompt_dir=skills/profile-to-company-criteria`、`criteria_source=llm`、
 `criteria_label=LLM · criteria/v1 · deepseek-flash`、`calls=1 / failures=0`；
 把该次模型输出喂给技能自带校验器 → `✓ 4 条标准全部合规（契约 criteria/v1）`。
 

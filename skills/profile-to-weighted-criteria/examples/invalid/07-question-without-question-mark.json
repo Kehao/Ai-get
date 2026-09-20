@@ -1,7 +1,0 @@
-{
-  "_violates": "question 不以问号结尾。判定口径必须是可回答的问句，否则前端展示出来不成句子",
-  "criteria": [
-    {"category": "geo", "name": "地域：杭州", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["杭州"], "expected": "杭州", "lenient": false, "note": ""},
-    {"category": "industry", "name": "行业：企业服务与软件", "question": "主营业务是否属于企业服务或软件", "weight": 5, "tokens": ["SaaS", "企业服务"], "expected": "企业服务与软件", "lenient": false, "note": ""}
-  ]
-}

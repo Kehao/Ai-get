@@ -75,6 +75,28 @@ SOURCE_ROTATION: tuple[str, ...] = (
 
 _LOCATIONS: tuple[str, ...] = CITIES
 
+# 此前履历的叙述模板：按职位包的关键词写成「曾在什么类型的公司做同类岗位」。
+# 合成档案没有真实履历可引，措辞刻意保持**类型化**（「一家同类厂商」「头部厂商」），
+# 不虚构具体前雇主名称——前雇主写得太具体会像真实数据。
+PRIOR_STORIES: tuple[str, ...] = (
+    "此前在一家同类厂商担任同类岗位，主导过从零搭建团队与流程，"
+    "并在两个完整财年内把核心业务指标做到行业均值以上",
+    "曾任职于头部厂商的同职能团队，负责多产品线的并行推进，"
+    "有把试点项目复制成规模化打法的一手经验",
+    "职业生涯从一线执行岗起步，逐步接手整体盘面，"
+    "对上下游协作与跨部门资源协调有完整的一线视角",
+    "此前有创业公司早期成员经历，经历过产品方向调整与组织扩张的完整周期，"
+    "习惯在资源有限的前提下定优先级",
+)
+
+# 教育与认证的叙述。同样是类型化表述，与履历模板按 index 组合。
+EDUCATION_STORIES: tuple[str, ...] = (
+    "本科就读于国内高校的工商管理专业，另持有行业内公认的中级职业认证",
+    "拥有计算机相关专业的本科背景，工作后完成了系统的管理培训项目",
+    "硕士阶段研究方向与现任业务直接相关，毕业起一直深耕同一行业",
+    "本科毕业后再修读在职 MBA，课程项目即围绕现任职责展开",
+)
+
 
 class _PersonIndex:
     """把「第 N 个人物」映射到语料或合成档案，两种来源共享同一取用顺序。"""
@@ -123,10 +145,15 @@ class _PersonIndex:
         name_local = f"{surname_cn}{given_cn}"
         name = f"{given_py} {surname_py}"
         handle = f"{given_py.lower()}-{surname_py.lower()}{index % 90 + 10}"
+        # 摘要写成参考站那样的**多面履历叙述**：现任职责 → 擅长领域 →
+        # 此前经历 → 教育背景。参考站的人物摘要普遍五句以上，单句摘要会让
+        # 详情页的「AI 摘要」区块看起来比表格行还薄。
+        prior = PRIOR_STORIES[(index + index // len(ROLE_PACKS)) % len(PRIOR_STORIES)]
+        education = EDUCATION_STORIES[(index + index // len(PRIOR_STORIES)) % len(EDUCATION_STORIES)]
         summary = (
-            f"{name_local}是{company}的{title_cn}，负责{'、'.join(keywords)}相关工作，"
-            f"常驻{city}。公开档案显示其此前有同类岗位经历，"
-            "并参与过面向企业客户的长期项目交付。"
+            f"{name_local}是{company}的{title_cn}，负责{'、'.join(keywords)}相关工作，常驻{city}。"
+            f"公开档案显示其擅长{'、'.join(keywords[:2])}，倾向用可量化的指标管理在手业务。"
+            f"{prior}。教育背景方面，{education}。"
         )
         return PersonSeed(
             name=name,

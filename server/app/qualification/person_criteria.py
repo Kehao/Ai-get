@@ -45,19 +45,26 @@
 
 ## 与 LLM 的关系
 
-人物模式**目前只有规则引擎这一条路径**：L0 的提示词契约
-（`skills/profile-to-weighted-criteria/contract.json`）里写的是会社模式的维度表，
-装载时会逐项断言它与会社的规则表一致，不能直接拿来做人物标准。
-`build_person_criteria_detailed()` 因此在 `source` 上如实报 `rule`，
-且**不填 `fallback_reason`**——按约定那是「试过但失败」，而这里是从没试过。
+与会社模式同一套「**LLM 优先、规则引擎兜底**」：`build_person_criteria_detailed()`
+先尝试用 LLM 按人物契约（`skills/profile-to-person-criteria/`，mode=people）生成标准，
+输出逐条过白名单校验（category ∈ 人物枚举、weight 1..5、seniority.expected ∈ 职级阶梯、
+background/signal 强制 lenient、通过数 ≥ 2），不满足则整批弃用并降级到本模块的规则引擎。
+
+降级是静默的但**必须留痕**：`CriteriaBuild.source/label/fallback_reason` 会被仓库层
+冻结进任务记录，界面据此显示 `LLM · person-criteria/v1 · <model>` 还是 `内置规则引擎`。
+`fallback_reason` 为空表示没尝试过 LLM，有值表示试过但失败。
+
+LLM 层（`app/llm/`）只负责调用/缓存/报错，返回原始 dict；把 dict 变成 `Criterion`
+的校验与构造放在这里——校验规则的单一来源不能散落，与会社模式同一哲学。
 """
 
 from __future__ import annotations
 
+import logging
 import re
 import zlib
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Literal, Sequence, get_args
 
 from .criteria import (
     FUNDING_KEYWORDS,
@@ -67,10 +74,15 @@ from .criteria import (
     SOURCE_LABELS,
     CriteriaBuild,
     Criterion,
+    _clean_text,
+    _clean_tokens,
+    _last_llm_failure,
     detect_city,
     detect_region,
 )
 from ..mock.synth import CITIES
+
+logger = logging.getLogger(__name__)
 
 PersonCriterionCategory = Literal[
     "name",
@@ -330,11 +342,15 @@ def build_person_criteria_detailed(
     *,
     user_conditions: Sequence[str] = (),
 ) -> CriteriaBuild:
-    """人物标准的生成。目前只有规则引擎一条路径（原因见模块开头）。
+    """人物标准的生成：**LLM 优先、规则引擎兜底**，任何情况下都返回一份可用的标准。
 
-    `fallback_reason` 保持为空：按约定「空 = 从没试过，有值 = 试过但失败」，
-    人物模式属于前者，报成失败会让人去查一个并不存在的故障。
+    顺序稳定：姓名 → 职位 → 职级 → 公司特征 → 地域 → 意向信号 → 履历背景 → 用户补充。
+    顺序稳定意味着 `id` 稳定，前端条件行的色条与勾选状态才不会在刷新后跳位。
     """
+    llm_build = _criteria_from_llm(text, user_conditions)
+    if llm_build is not None:
+        return llm_build
+
     criteria = _criteria_from_profile(text)
     for raw in user_conditions:
         criteria = _merge_user_condition(criteria, raw)
@@ -343,6 +359,160 @@ def build_person_criteria_detailed(
         criteria=tuple(_with_reachability(criteria)),
         source="rule",
         label=SOURCE_LABELS["rule"],
+        fallback_reason=_last_llm_failure(),
+    )
+
+
+# ── LLM 路径：调用 + 白名单校验 ────────────────────────────────────────────
+
+# LLM 允许产出的维度。刻意不含 reachability——它与画像内容无关，
+# 由 `_with_reachability` 统一补，避免模型自作主张地漏掉或改写。
+_LLM_CATEGORIES: frozenset[str] = frozenset(get_args(PersonCriterionCategory)) - {"reachability"}
+
+# 各维度允许的最大条数。background / signal 允许并列多条（画像里可能有多个并列限定语）。
+_MAX_PER_CATEGORY: dict[str, int] = {"background": 2, "signal": 2}
+_DEFAULT_MAX_PER_CATEGORY = 1
+
+# LLM 至少要产出这么多条有效标准，否则整批弃用（与会社模式同一取舍：
+# 只剩一条标准时「加权得分」失去意义，还不如走规则引擎）。
+_MIN_ACCEPTED = 2
+
+# 人物侧各字段的长度上限与会社侧同一套，直接复用 criteria 的清洗函数，
+# 上限值也就跟随同一份常量——两边的「不要把整句话塞进 tokens」兜底保持一致。
+
+
+def _criteria_from_llm(
+    text: str,
+    user_conditions: Sequence[str],
+) -> CriteriaBuild | None:
+    """尝试用 LLM 按人物契约生成标准。未开启、失败或校验不通过时返回 None（交由规则引擎接手）。"""
+    # 局部导入：`app.llm.prompts` 在模块层反向依赖本模块的词汇表，
+    # 在函数内导入才能保证本模块已经完整加载，从而不产生循环导入。
+    from ..llm import LlmError, generate_criteria, get_settings, prompt_version
+
+    settings = get_settings()
+    if not settings.usable:
+        return None
+
+    conditions = tuple(item.strip() for item in user_conditions if item.strip())
+
+    try:
+        result = generate_criteria(text, conditions, mode="people")
+    except LlmError as error:
+        # 不抛给调用方：LLM 是「会失败的外部依赖」，失败只应降低标准质量。
+        logger.warning("找人 L0 标准生成降级到规则引擎：%s", error)
+        return None
+    except Exception:  # noqa: BLE001 — 兜底：绝不让 LLM 的任何异常冒泡成 5xx
+        logger.exception("找人 L0 标准生成出现未预期异常，降级到规则引擎")
+        return None
+
+    accepted, rejected = _validate_llm_items(result.criteria)
+    if len(accepted) < _MIN_ACCEPTED:
+        logger.warning(
+            "找人 LLM 输出通过校验的条目不足（通过 %d / 拒绝 %d），整批弃用并降级",
+            len(accepted),
+            rejected,
+        )
+        return None
+
+    # 用户手写的条件绝不能被模型漏掉：模型没覆盖到的由规则逻辑补齐。
+    # `_merge_user_condition` 自带「回传条件名要跳过」的识别，直接复用。
+    for raw in conditions:
+        accepted = _merge_user_condition(accepted, raw)
+
+    return CriteriaBuild(
+        criteria=tuple(_with_reachability(accepted)),
+        source="llm",
+        label=f"LLM · {result.prompt_version} · {result.model}",
+        prompt_version=result.prompt_version or prompt_version("people"),
+        model=result.model,
+    )
+
+
+def _validate_llm_items(items: Sequence[dict]) -> tuple[list[Criterion], int]:
+    """把 LLM 输出的 dict 逐个校验成 `Criterion`，返回 (通过项, 被拒条数)。
+
+    与会社模式同一策略：逐条校验、通过数量不足时整批弃用。
+    """
+    accepted: list[Criterion] = []
+    per_category: dict[str, int] = {}
+    rejected = 0
+
+    for item in items:
+        criterion = _criterion_from_llm(item)
+        if criterion is None:
+            rejected += 1
+            continue
+
+        cap = _MAX_PER_CATEGORY.get(criterion.category, _DEFAULT_MAX_PER_CATEGORY)
+        if per_category.get(criterion.category, 0) >= cap:
+            rejected += 1
+            continue
+
+        per_category[criterion.category] = per_category.get(criterion.category, 0) + 1
+        accepted.append(criterion)
+
+    return accepted, rejected
+
+
+def _criterion_from_llm(item: dict) -> Criterion | None:
+    """单条人物标准的白名单校验与构造。任一硬性契约不满足即返回 None。
+
+    各维度的判定器直接解析这些字段：姓名匹配吃 `tokens`（写法数组），
+    职级比较吃 `expected`（阶梯档位），其余维度靠 `tokens` 子串匹配——
+    所以「seniority 的 expected 必须落在阶梯里」「除 seniority 外 tokens 不得为空」
+    是硬性契约，不是风格建议。
+    """
+    category = item.get("category")
+    if not isinstance(category, str) or category not in _LLM_CATEGORIES:
+        return None
+
+    name = _clean_text(item.get("name"), 40)
+    if not name:
+        return None
+
+    weight = item.get("weight")
+    if isinstance(weight, bool) or not isinstance(weight, (int, float)):
+        return None
+    weight = int(weight)
+    if not 1 <= weight <= 5:
+        return None
+
+    tokens = _clean_tokens(item.get("tokens"))
+    expected = _clean_text(item.get("expected"), 40)
+
+    if category == "seniority":
+        # 判定器拿 expected 去职级阶梯里查位置，阶梯之外的值整条无法判定。
+        if expected not in SENIORITY_LADDER:
+            return None
+    elif category in ("background", "signal"):
+        # 宽松维度只靠 tokens 匹配，expected 由界面留空。
+        if expected:
+            return None
+        if not tokens:
+            return None
+    elif not tokens:
+        # name / title / company / geo 全靠 tokens 做匹配，缺了就无法判定。
+        return None
+
+    # background 与 signal 强制 lenient：这是打分模型的安全不变量，不是模型的自由选项。
+    # 公开履历没写到某段经历，不等于这段经历不存在。
+    lenient = category in ("background", "signal")
+
+    question = _clean_text(item.get("question"), 80) or f"公开履历是否体现了「{name}」？"
+
+    return Criterion(
+        # CRC32 而不是内置 hash：内置 hash 对字符串按进程随机加盐，
+        # 会让同一条标准在服务重启后换 id，前端条件行的色条随之跳位。
+        id=f"criterion-{category}-{zlib.crc32(f'{name}|{expected}'.encode()) % 10**6}",
+        name=name,
+        question=question,
+        category=category,  # type: ignore[arg-type] — 已由 _LLM_CATEGORIES 校验
+        weight=weight,
+        tokens=tokens,
+        expected=expected,
+        rationale=_clean_text(item.get("note"), 120) or "由 LLM 依据画像推导。",
+        lenient=lenient,
     )
 
 
@@ -819,6 +989,19 @@ def _merge_user_condition(criteria: list[Criterion], raw: str) -> list[Criterion
     if _is_round_tripped_label(text, criteria):
         return criteria
 
+    # 条件面板回传的文本可能已经包过类别前缀（历史数据里还有多层嵌套的
+    # 「履历背景：履历背景：喜欢小动物」）。前缀词表靠不住——LLM 每次起的名字
+    # 前缀都可能不同（「履历：」「兴趣：」「动态：」……）——所以按形状剥：
+    # 反复剥掉开头的「短词：」段，剩下的才是条件本体。
+    text = _strip_name_prefixes(text)
+    if not text:
+        return criteria
+
+    # 剥完前缀后按**内容**去重：LLM 对同一条件的措辞不稳定，「兴趣：喜欢小动物」
+    # 和「履历：喜欢小动物」是同一条，不能各包一层变成两条重复标准。
+    if any(_appears(text, item.name) for item in criteria):
+        return criteria
+
     existing = {item.name for item in criteria}
 
     names = detect_person_names(text)
@@ -857,6 +1040,26 @@ def _merge_user_condition(criteria: list[Criterion], raw: str) -> list[Criterion
             lenient=True,
         ),
     ]
+
+
+# 「类别前缀」的形状：不超过 6 个字、不含空白与冒号的短词 + 中文冒号。
+# 只按形状剥开头反复出现的前缀段（「履历背景：履历背景：X」→「X」），
+# 条件本体不受影响；剥完为空（文本只有前缀）时由调用方放弃这条。
+_LABEL_HEAD = re.compile(r"^[^：\s]{1,6}：")
+
+
+def _strip_name_prefixes(text: str) -> str:
+    """剥掉条件文本开头已经包过的类别前缀，保证包装是幂等的。
+
+    「履历背景：履历背景：喜欢小动物」→「喜欢小动物」，随后只会再包一层，
+    名字回到「履历背景：喜欢小动物」并从此稳定——无论 LLM 每次用什么前缀词。
+    """
+    stripped = text.strip()
+    while True:
+        match = _LABEL_HEAD.match(stripped)
+        if match is None:
+            return stripped
+        stripped = stripped[match.end() :].lstrip()
 
 
 def _is_round_tripped_label(text: str, criteria: Sequence[Criterion]) -> bool:

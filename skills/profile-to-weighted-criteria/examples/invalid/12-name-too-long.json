@@ -1,7 +1,0 @@
-{
-  "_violates": "name 超过 22 字。标准名会显示在条件行里，过长会把列表撑坏",
-  "criteria": [
-    {"category": "geo", "name": "地域：杭州", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["杭州"], "expected": "杭州", "lenient": false, "note": ""},
-    {"category": "industry", "name": "行业：企业服务与软件以及云计算与产业互联网与数据服务方向", "question": "主营业务是否属于企业服务或软件？", "weight": 5, "tokens": ["SaaS", "企业服务"], "expected": "企业服务与软件", "lenient": false, "note": ""}
-  ]
-}

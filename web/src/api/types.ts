@@ -160,6 +160,8 @@ export interface ConditionEvaluation {
   source_url: string;
   /** 该行对应标准的权重，与 condition 一起复现判定来源。 */
   weight: number;
+  /** 这条结论的全部可回溯来源；为空时退回展示 source_label/source_url 单链接。 */
+  references: ReferenceItem[];
 }
 
 export interface TargetCompanyDetail {

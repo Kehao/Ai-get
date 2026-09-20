@@ -73,6 +73,9 @@ def _judge_one(criterion: Criterion, record: CompanyRecord) -> CriterionVerdict:
         reference_count=reference_count,
         source_label=source_label,
         source_url=source_url,
+        # 会社的公开来源就是企业自己的页面，单条即可回溯；多来源 chip 的形状
+        # 与人物模式保持一致（前端同一套渲染），只是这里通常只有一条。
+        references=((source_label, source_url),) if source_url else (),
     )
 
 

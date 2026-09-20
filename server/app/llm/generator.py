@@ -72,11 +72,15 @@ _lock = threading.RLock()
 _stats = GenerationStats()
 
 
-def generate_criteria(text: str, user_conditions: tuple[str, ...] = ()) -> GenerationResult:
-    """调用 LLM 产出标准 dict 列表。任何失败都抛 `LlmError`，由调用方决定怎么降级。"""
+def generate_criteria(text: str, user_conditions: tuple[str, ...] = (), mode: str = "company") -> GenerationResult:
+    """调用 LLM 产出标准 dict 列表。任何失败都抛 `LlmError`，由调用方决定怎么降级。
+
+    `mode` 决定读哪份契约（会社 / 人物）——两份契约各有版本号，
+    缓存键里含版本，所以两种模式天然不串缓存。
+    """
     settings = get_settings()
     # 提示词来自技能目录，加载失败会抛 PromptAssetError（属于部署错误，不该被当成 LLM 抖动掩盖）。
-    asset = load_asset()
+    asset = load_asset(mode)
     key = _cache_key(asset.version, text, user_conditions, settings.model)
 
     with _lock:
@@ -95,7 +99,7 @@ def generate_criteria(text: str, user_conditions: tuple[str, ...] = ()) -> Gener
     try:
         completion: Completion = complete_json(
             asset.system,
-            render_user_prompt(text, user_conditions),
+            render_user_prompt(text, user_conditions, mode),
             temperature=0.0,
         )
     except LlmError as error:

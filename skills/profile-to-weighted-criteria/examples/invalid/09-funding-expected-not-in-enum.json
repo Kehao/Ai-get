@@ -1,7 +1,0 @@
-{
-  "_violates": "funding 的 expected 写成 \"D轮\"，不在枚举里。判定器不认识这个阶段，会导致该条被逐条拒绝",
-  "criteria": [
-    {"category": "geo", "name": "地域：杭州", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["杭州"], "expected": "杭州", "lenient": false, "note": ""},
-    {"category": "funding", "name": "融资：A轮", "question": "企业是否已完成 A 轮融资？", "weight": 3, "tokens": ["A轮"], "expected": "D轮", "lenient": false, "note": ""}
-  ]
-}

@@ -354,6 +354,16 @@ def _evidence_for_person(item: PersonSeed, source_url: str, *, has_summary: bool
                 snippet="所属机构的团队介绍页，用于交叉确认其在职状态。",
             )
         )
+    # 本人公开动态：换岗、招聘这类意向信号就发在那里，评估卡引用它才能
+    # 与参考站一样给出「本人加入团队的动态」这条佐证。只有领英类档案有动态页。
+    if has_summary and item.source_label == "领英":
+        items.append(
+            Evidence(
+                title=f"{item.name} · 公开动态",
+                url=f"https://linkedin.com/posts/{item.source_handle}",
+                snippet="本人的公开动态流，用于捕捉新上任、扩张、招聘等触达窗口期线索。",
+            )
+        )
     return tuple(items)
 
 

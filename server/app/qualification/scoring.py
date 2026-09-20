@@ -46,7 +46,12 @@ NO_CRITERIA_REASON = "本轮没有可用的判断标准，无法给出匹配结�
 
 @dataclass(frozen=True, slots=True)
 class CriterionVerdict:
-    """一条标准在某条记录上的判定结果，是详情页准入条件评估的一行。"""
+    """一条标准在某条记录上的判定结果，是详情页准入条件评估的一行。
+
+    `references` 是这条结论**可回溯的公开来源**（标题, 网址）列表，按相关度排序；
+    `source_label` / `source_url` 永远等于第一条的展示形式，供表格等只读单链接的
+    场景复用。参考站每条评估卡下方挂着多条来源 chip，这里就是它们的数据来源。
+    """
 
     criterion: Criterion
     verdict: Verdict
@@ -54,6 +59,12 @@ class CriterionVerdict:
     reference_count: int
     source_label: str
     source_url: str
+    references: tuple[tuple[str, str], ...] = ()
+
+    def __post_init__(self) -> None:
+        # references 为空时退回单来源形式，保证旧调用点（不传 references）行为不变。
+        if not self.references and self.source_url:
+            object.__setattr__(self, "references", ((self.source_label, self.source_url),))
 
     @property
     def factor(self) -> float:

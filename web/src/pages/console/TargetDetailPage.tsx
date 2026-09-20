@@ -43,7 +43,7 @@ import { CONDITION_COLORS, CATEGORY_LABELS, MINING_PHASE_LABELS } from '@/consta
 import { OUTREACH_CHANNELS } from '@/constants/channels';
 import { ROUTES } from '@/constants/routes';
 import { useAsync } from '@/hooks/useAsync';
-import { formatNumber, toDisplayDomain } from '@/utils/format';
+import { formatNumber, toDisplayDomain, toSourcePill } from '@/utils/format';
 import { isPersonDetail, toCompanyDossier, toCompanyRow, toPersonDossier, toPersonRow } from '@/utils/target-rows';
 
 import styles from './TargetDetailPage.module.less';
@@ -185,6 +185,9 @@ const TargetDetailPage = (): JSX.Element => {
     (queryText.trim() !== targetList.query ||
       conditions.map((item) => item.text.trim()).join('|') !==
         serverConditions.map((item) => item.text.trim()).join('|'));
+  // 能否开始挖掘只看「有没有至少一条条件」：挖掘会先保存再重跑，
+  // 配置没改动也允许重新挖一批，不需要逼用户再编辑一次。
+  const canMine = conditions.some((item) => item.text.trim() !== '');
 
   const openContacts = async (row: TargetCompany): Promise<void> => {
     setContactsRow(row);
@@ -865,15 +868,15 @@ const TargetDetailPage = (): JSX.Element => {
                     <button
                       type="button"
                       className={styles.mineButton}
-                      disabled={!configDirty || busy}
-                      title={configDirty ? undefined : '配置未改动，先调整寻找对象或判断条件'}
+                      disabled={busy || !canMine}
+                      title={canMine ? undefined : '至少保留一条判断条件后才能挖掘'}
                       onClick={() => void startMining()}
                     >
                       <Search size={15} />
                       开始挖掘
                     </button>
-                    {configDirty ? null : (
-                      <p className={styles.configHint}>当前配置与已保存的一致，改动后即可重新挖掘。</p>
+                    {canMine ? null : (
+                      <p className={styles.configHint}>请先添加或保留至少一条判断条件。</p>
                     )}
                   </section>
 
@@ -1100,10 +1103,26 @@ const TargetDetailPage = (): JSX.Element => {
                                 <span className={styles.evalRef}>参考 {item.reference_count}</span>
                               </div>
                               <p className={styles.evalText}>{item.explanation}</p>
-                              <a className={styles.evalSource} href={item.source_url} target="_blank" rel="noreferrer">
-                                <Link2 size={10} />
-                                {item.source_label}
-                              </a>
+                              <div className={styles.evalSources}>
+                                {(item.references.length > 0
+                                  ? item.references
+                                  : item.source_url !== ''
+                                    ? [{ title: item.source_label, url: item.source_url }]
+                                    : []
+                                ).map((ref) => (
+                                  <a
+                                    key={ref.url}
+                                    className={styles.evalSource}
+                                    href={ref.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    title={ref.title}
+                                  >
+                                    <Link2 size={10} />
+                                    {toSourcePill(ref.url)}
+                                  </a>
+                                ))}
+                              </div>
                             </li>
                           ))}
                         </ul>

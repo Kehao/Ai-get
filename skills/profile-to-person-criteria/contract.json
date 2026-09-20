@@ -1,0 +1,80 @@
+{
+  "version": "person-criteria/v2",
+
+  "_comment": [
+    "「个人画像 → 加权判定标准」的机器可读契约。这是唯一真源：",
+    "  prompts/criteria.system.md 的契约表由它渲染（服务端 app/llm/prompts.py，mode=people）。",
+    "改契约只改这一个文件，提示词同时跟随，不会漂移。",
+    "与企业画像版（profile-to-company-criteria）刻意不是同一份契约：",
+    "判自然人还是判机构，维度不重叠（人物看姓名/职位/职级，会社看行业/规模/融资）。",
+    "注意：各维度的默认权重不在这里——它归运行时（PERSON_CATEGORY_WEIGHTS），渲染时注入提示词。",
+    "白名单校验在服务端 qualification/person_criteria.py（本目录刻意不放独立校验器副本）。"
+  ],
+
+  "min_criteria": 2,
+  "max_criteria": 6,
+
+  "categories": [
+    {
+      "name": "name",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "text",
+      "tokens_hint": "该姓名的可能写法数组，如 [\"陈可航\",\"Chen Kehang\",\"Kehang Chen\"]",
+      "expected_hint": "姓名本身，如 \"陈可航\""
+    },
+    {
+      "name": "title",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "text",
+      "tokens_hint": "职能关键词数组（中英文同义词都要给），如 [\"市场\",\"marketing\",\"CMO\",\"品牌\"]",
+      "expected_hint": "职能方向名，如 \"市场\""
+    },
+    {
+      "name": "company",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "text",
+      "tokens_hint": "所属机构的行业/业务关键词数组（只取画像直接写出的词），如 [\"云安全\",\"信息安全\"]",
+      "expected_hint": "行业方向名，如 \"企业服务与软件\""
+    },
+    {
+      "name": "seniority",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "enum",
+      "enum_values": ["决策层", "管理层", "执行层", "一线"],
+      "tokens_hint": "职级关键词数组，如 [\"总监\",\"head of\",\"director\"]",
+      "expected_hint": "**必须是「$enum_values」之一**，取画像里出现的最低一档"
+    },
+    {
+      "name": "geo",
+      "max": 1,
+      "lenient": false,
+      "expected_kind": "text",
+      "tokens_hint": "城市名数组，如 [\"杭州\"]",
+      "expected_hint": "城市或区域名，如 \"杭州\""
+    },
+    {
+      "name": "background",
+      "max": 2,
+      "lenient": true,
+      "expected_kind": "empty",
+      "tokens_hint": "履历关键词数组，如 [\"出海\",\"从零搭建\",\"订阅制\"]",
+      "expected_hint": "必须是空字符串 \"\""
+    },
+    {
+      "name": "signal",
+      "max": 2,
+      "lenient": true,
+      "expected_kind": "empty",
+      "tokens_hint": "公开动态线索词数组，如 [\"新上任\",\"正在招聘\",\"扩张\",\"演讲\"]",
+      "expected_hint": "必须是空字符串 \"\""
+    }
+  ],
+
+  "excluded_categories": {
+    "reachability": "与画像内容无关，任何画像都适用，由代码统一补，不让模型自作主张"
+  }
+}

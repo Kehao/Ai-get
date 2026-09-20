@@ -1,7 +1,0 @@
-{
-  "_violates": "size 的 tokens 非空。规模用结构化的 expected 表达（\"0:50\"），再给一串关键词会让判定器不知道该按哪条判",
-  "criteria": [
-    {"category": "geo", "name": "地域：杭州", "question": "企业注册地是否在杭州？", "weight": 5, "tokens": ["杭州"], "expected": "杭州", "lenient": false, "note": ""},
-    {"category": "size", "name": "规模：员工 50 人以下", "question": "企业员工数是否不超过 50 人？", "weight": 3, "tokens": ["50人以下"], "expected": "0:50", "lenient": false, "note": ""}
-  ]
-}
