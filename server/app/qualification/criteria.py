@@ -520,12 +520,54 @@ def industry_hints(text: str) -> tuple[str, ...]:
     真实数据源可以完全忽略这个提示；内置演示源用它来保证结果不跑偏——
     否则「找消费品企业」会返回一堆无关行业，让判定层集体落空，
     那是**召回层的问题**，不该由判定层背。
+
+    ⚠️ **召回不要用这个函数**：标准一旦冻结，提示就必须从标准派生
+    （见 `company_hints`），重新解析画像会把用户改过的条件冲掉。
+    这里的入参是**画像原文**，因此只适用于还没有标准的场合。
     """
     tokens: list[str] = []
     for _family, family_tokens in INDUSTRY_FAMILIES:
         if any(token in text for token in family_tokens):
             tokens.extend(family_tokens)
     return tuple(dict.fromkeys(tokens))
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyHints:
+    """会社模式的召回提示。**从已冻结的标准派生**，不是再读一遍画像。
+
+    与 `PersonHints` 存在同样的理由，但两者维度不重叠，所以是两份而不是一份：
+    会社要的是「地域 + 行业」，人物要的是「姓名 + 职位 + 公司特征」。
+    """
+
+    city: str | None = None
+    industry_hints: tuple[str, ...] = ()
+
+
+def company_hints(criteria: Sequence[Criterion]) -> CompanyHints:
+    """把会社标准里的可比对取值摊平成召回提示。
+
+    与 `industry_hints(画像)` 的分工要说清楚：那个函数是「画像 → 匹配词」，
+    只适用于**还没有标准**的场合（如策略文案预览）。召回必须走这条路径，
+    否则用户手动补充的地域/行业条件传不到数据源——标准里有「地域：上海」、
+    召回却按画像里的（可能根本没有）城市去捞，判定层再按上海筛，
+    结果就是整批系统性落空。
+
+    **刻意不做同族扩展**（人物侧做了，见 `_expand_industry_tokens`）：
+    规则引擎产出的行业标准，tokens 本来就是整个族；LLM 产出的 tokens 是它
+    收敛过的词，再扩回族等于把模型的理解丢掉——而 `_build_search_text` 只取
+    前三个，最后拼进查询的会是族的前三个词，与标准里写的那个词未必是一回事。
+    """
+    city: str | None = None
+    industry: list[str] = []
+
+    for criterion in criteria:
+        if criterion.category == "geo" and city is None:
+            city = criterion.expected or (criterion.tokens[0] if criterion.tokens else None)
+        elif criterion.category == "industry":
+            industry.extend(criterion.tokens)
+
+    return CompanyHints(city=city, industry_hints=tuple(dict.fromkeys(industry)))
 
 
 # ── 内部：从正文派生标准 ──────────────────────────────────────────────────

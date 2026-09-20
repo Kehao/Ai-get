@@ -74,8 +74,7 @@ from ..qualification import (
     Judgment,
     build_criteria_detailed,
     build_person_criteria_detailed,
-    detect_city,
-    industry_hints,
+    company_hints,
     judge,
     judge_person,
     person_hints,
@@ -710,6 +709,7 @@ def _recall(
         ]
         return people[:limit], people_result.source_id
 
+    company = company_hints(criteria or [])
     company_result = call_source(
         company_source(),
         "company_search",
@@ -717,8 +717,8 @@ def _recall(
             text=query,
             limit=limit + len(blocked),
             mode="company",
-            preferred_city=detect_city(query),
-            industry_hints=industry_hints(query),
+            preferred_city=company.city,
+            industry_hints=company.industry_hints,
             names=names,
             seed=seed,
         ),
