@@ -277,10 +277,16 @@ class WebQuery:
 
 @dataclass(frozen=True, slots=True)
 class EnrichTarget:
-    """一条待补齐的企业指征。域名与名称至少有一个；两个都有时域名优先（更精确）。"""
+    """一条待补齐的企业指征。域名与名称至少有一个；两个都有时域名优先（更精确）。
+
+    `missing` 是召回记录缺失的可补字段提示：权威源（按 profile 计费）可以忽略它，
+    但按次计费的廉价源（如 web 搜索富化）应当据此跳过帮不上忙的目标——
+    「已经拿到的字段不再重复付费」是补齐编排的通行原则。
+    """
 
     domain: str = ""
     name: str = ""
+    missing: frozenset[EnrichableField] = frozenset()
 
     @property
     def cache_key(self) -> str:

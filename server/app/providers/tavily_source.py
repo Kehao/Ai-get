@@ -15,6 +15,12 @@ Tavily 是 Agent 原生检索服务（免费层每月 1000 credits），在这�
 - **行业**只把画像提示里**真实出现在标题或正文**的词记进来，不做推断——
   行业字段会被判定层的行业标准逐条匹配，写多了会造成「弱命中给满分」的虚高。
 
+## web 富化（company_enrich 兜底）
+
+权威补齐源（PDL 等）优先；Tavily 只对**缺摘要**的目标（`EnrichTarget.missing` 提示）
+做一次针对性检索，从相关页面的正文补 `summary` 与证据。照面字段（注册资本、法定代表人）
+从网页摘要里抽不可靠，**不做**——抽得到也不写，宁缺毋假。
+
 ## 失败语义
 
 凭据缺失/配额耗尽等全部收敛为带 `kind` 的 `SourceError`，由注册表记入
@@ -32,8 +38,10 @@ from .. import config
 from .cache import get as cache_get
 from .cache import set as cache_set
 from .contracts import (
+    CompanyEnrichQuery,
     CompanyQuery,
     CompanyRecord,
+    EnrichTarget,
     Evidence,
     SourceError,
     SourceManifest,
@@ -43,6 +51,9 @@ from .registry import register_source
 # Tavily 单次检索的候选上限。免费层的 basic depth 一次最多返回 20 条，
 # 一次挖掘的目标量（默认 25）本就不指望网页检索一次凑齐——数量由 mock 兜底。
 _MAX_RESULTS_PER_SEARCH = 20
+
+# web 富化每家企业的检索条数：只找一条相关摘要，多了是浪费。
+_ENRICH_MAX_RESULTS = 5
 
 # 标题里常见的「站点名 - 页面标题」类分隔符。切出第一段作为公司名的候选。
 _TITLE_SEPARATORS = (" | ", " - ", " — ", "｜", "－", "·")
@@ -78,10 +89,12 @@ _NON_COMPANY_DOMAINS = frozenset(
 _MANIFEST = SourceManifest(
     id="tavily",
     name="Tavily 网页召回",
-    capabilities=("company_search",),
-    description="公开网页检索得到的真实企业线索，含可访问域名与官网摘要。",
+    capabilities=("company_search", "company_enrich"),
+    description="公开网页检索：召回真实企业线索；对缺摘要的企业做 web 富化。",
     regions=("GLOBAL",),
-    priority=20,
+    # 权威补齐源（PDL，priority=20）先用，web 富化只做兜底——同样是 enrich 能力，
+    # 按次计费的网页检索永远排在 profile 库之后。
+    priority=40,
     cost_per_call=0.008,
     requires_credentials=True,
 )
@@ -139,11 +152,98 @@ class TavilySource:
         except Exception as error:  # noqa: BLE001 — SDK 的异常类型不稳定，按状态码文案分类
             raise _classify(error, str(error)) from error
 
+    # ── company_enrich（web 富化兜底）────────────────────────────────────
+
+    def enrich_companies(self, query: CompanyEnrichQuery) -> list[CompanyRecord]:
+        """对缺摘要的企业做针对性网页检索。逐目标容错：单家失败不拖垮整批，
+        但全部失败时抛出第一个错误——源故障不能被伪装成「都查不到」。"""
+        records: list[CompanyRecord] = []
+        first_error: SourceError | None = None
+
+        for target in query.targets:
+            if "summary" not in target.missing:
+                continue  # 已有摘要：网页富化帮不上别的忙，一次 credit 都不花
+            try:
+                record = self._web_enrich_one(target)
+            except SourceError as error:
+                first_error = first_error or error
+                continue
+            if record is not None:
+                records.append(record)
+
+        if not records and first_error is not None:
+            raise first_error
+        return records
+
+    def _web_enrich_one(self, target: EnrichTarget) -> CompanyRecord | None:
+        """检索单家企业。查不到相关页面不是错误——返回 None，编排层原样保留召回记录。"""
+        cache_key = f"tavily:webenrich:{target.cache_key}"
+        cached = cache_get(cache_key)
+        # 空串是「检索过但没有相关页面」的哨兵：不再为同一家企业重复花钱。
+        if cached == "":
+            return None
+        if cached is not None:
+            return cached  # type: ignore[return-value]
+
+        response = self._search(
+            _build_enrich_text(target),
+            CompanyQuery(text="", limit=_ENRICH_MAX_RESULTS),
+        )
+        record = _enrich_record_from_results(response, target)
+        cache_set(cache_key, record if record is not None else "")
+        return record
+
 
 def _build_search_text(query: CompanyQuery) -> str:
     """画像文本为主，行业提示只取前三个拼在后面——提示是相关性信号，不是查询本身。"""
     hints = " ".join(query.industry_hints[:3])
     return f"{query.text} {hints}".strip()
+
+
+def _build_enrich_text(target: EnrichTarget) -> str:
+    """富化查询：名称最精确（中文尤其如此），缺失时退化到域名。"""
+    subject = target.name.strip() or target.domain.strip()
+    return f"{subject} 企业简介"
+
+
+def _is_relevant_result(item: dict[str, Any], target: EnrichTarget) -> bool:
+    """结果必须指向目标企业本人：名称出现在标题/正文，或域名主体出现在 URL。
+    否则那条摘要属于别的公司，合并进召回记录就是张冠李戴。"""
+    title = str(item.get("title", ""))
+    content = str(item.get("content", ""))
+    url = str(item.get("url", "")).lower()
+    name = target.name.strip()
+    domain_root = target.domain.strip().lower().split(".", 1)[0]
+    if name and (name in title or name in content):
+        return True
+    return bool(domain_root) and len(domain_root) > 2 and domain_root in url
+
+
+def _enrich_record_from_results(
+    response: dict[str, Any],
+    target: EnrichTarget,
+) -> CompanyRecord | None:
+    """取第一条相关结果映射成补齐记录；没有相关结果时返回 None。"""
+    for item in response.get("results") or []:
+        if not _is_relevant_result(item, target):
+            continue
+        content = str(item.get("content", "")).strip()
+        if not content:
+            continue
+        title = str(item.get("title", "")).strip()
+        url = str(item.get("url", ""))
+        return CompanyRecord(
+            external_id=f"tavily-web-{target.cache_key}",
+            name=target.name or target.domain,
+            domain=target.domain,
+            summary=content,
+            contact_count=0,
+            evidence=(Evidence(title=title or target.name, url=url, snippet=content[:200]),),
+            missing_fields=frozenset({"contacts", "official_contact"}),
+            source_id=_MANIFEST.id,
+            attributes={"source": "web_search"},
+        )
+    return None
 
 
 def _to_company_records(response: dict[str, Any], query: CompanyQuery) -> list[CompanyRecord]:

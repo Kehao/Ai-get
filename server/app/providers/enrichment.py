@@ -34,7 +34,14 @@ def enrich_companies(records: list[CompanyRecord]) -> list[CompanyRecord]:
         return records
 
     targets = tuple(
-        EnrichTarget(domain=record.domain, name=record.name)
+        EnrichTarget(
+            domain=record.domain,
+            name=record.name,
+            # 缺失提示：missing_fields 之外，summary 为空也算缺（它不在所有源的
+            # 上报习惯里，但「没有摘要」这件事编排层可以直接看到）。
+            missing=record.missing_fields
+            | (frozenset({"summary"}) if not record.summary else frozenset()),
+        )
         for record in records
         if record.domain or record.name
     )

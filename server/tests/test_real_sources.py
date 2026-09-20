@@ -330,3 +330,141 @@ def test_enrich_companies_degrades_to_noop_without_sources(monkeypatch):
     base = CompanyRecord(external_id="m", name="n", domain="d.cn")
 
     assert enrich_companies([base]) == [base]
+
+
+# ── Tavily：web 富化兜底（6-免1）──────────────────────────────────────────
+
+
+def _web_enrich_source(results: list[dict], fail_with: Exception | None = None) -> TavilySource:
+    return TavilySource(api_key="test", client=FakeTavilyClient(results, fail_with=fail_with))
+
+
+def test_tavily_web_enrich_maps_relevant_result():
+    results = [
+        {  # 与目标无关的页面：必须被跳过。
+            "title": "某行业分析报告",
+            "url": "https://report.example.com/2026",
+            "content": "行业趋势概览。",
+        },
+        {
+            "title": "云杉网络 - 关于我们",
+            "url": "https://www.yunshan.net/about",
+            "content": "云杉网络是企业云安全服务商，提供微分段与容器安全。",
+        },
+    ]
+    source = _web_enrich_source(results)
+
+    records = source.enrich_companies(
+        CompanyEnrichQuery(
+            targets=(
+                EnrichTarget(
+                    domain="yunshan.net",
+                    name="云杉网络",
+                    missing=frozenset({"summary", "contacts"}),
+                ),
+            )
+        )
+    )
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.summary.startswith("云杉网络是企业云安全服务商")
+    assert record.evidence[0].url == "https://www.yunshan.net/about"
+    assert record.source_id == "tavily"
+    # 网页摘要不是权威工商数据：来源要如实标注，不冒充。
+    assert record.attributes["source"] == "web_search"
+
+
+def test_tavily_web_enrich_skips_targets_that_have_summary():
+    source = _web_enrich_source([])
+
+    records = source.enrich_companies(
+        CompanyEnrichQuery(
+            targets=(EnrichTarget(domain="acme.cn", name="某公司", missing=frozenset({"contacts"})),)
+        )
+    )
+
+    assert records == []
+    assert source._client.calls == 0  # 帮不上忙的目标：一次 credit 都不花
+
+
+def test_tavily_web_enrich_is_cached():
+    results = [
+        {"title": "云杉网络", "url": "https://yunshan.net", "content": "云杉网络的介绍。"}
+    ]
+    source = _web_enrich_source(results)
+    query = CompanyEnrichQuery(
+        targets=(EnrichTarget(domain="yunshan.net", name="云杉网络", missing=frozenset({"summary"})),)
+    )
+
+    source.enrich_companies(query)
+    source.enrich_companies(query)
+
+    assert source._client.calls == 1
+
+
+def test_tavily_web_enrich_no_relevant_result_is_cached_as_empty():
+    source = _web_enrich_source(
+        [{"title": "无关页面", "url": "https://other.org/x", "content": "别家的内容。"}]
+    )
+    query = CompanyEnrichQuery(
+        targets=(EnrichTarget(domain="ghost.cn", name="幽灵公司", missing=frozenset({"summary"})),)
+    )
+
+    assert source.enrich_companies(query) == []
+    # 第二次：命中空哨兵，不再打 API。
+    assert source.enrich_companies(query) == []
+    assert source._client.calls == 1
+
+
+def test_tavily_web_enrich_all_failures_raise():
+    source = _web_enrich_source([], fail_with=Exception("503 Service Unavailable"))
+    query = CompanyEnrichQuery(
+        targets=(EnrichTarget(domain="acme.cn", name="某公司", missing=frozenset({"summary"})),)
+    )
+
+    with pytest.raises(SourceError):
+        source.enrich_companies(query)
+
+
+def test_enrich_orchestration_passes_missing_hints():
+    """编排层要把「缺什么」传给补齐源——web 富化靠它决定要不要花 credit。"""
+    from app.providers import enrichment
+    from app.providers.contracts import CompanyEnrichQuery as Query
+    from app.providers.contracts import SourceManifest
+    from app.providers.registry import register_source, unregister_source
+
+    captured: list[Query] = []
+
+    class FakeEnrichSource:
+        manifest = SourceManifest(
+            id="fake-enrich",
+            name="假补齐源",
+            capabilities=("company_enrich",),
+            description="",
+            regions=("GLOBAL",),
+            priority=99,
+            cost_per_call=0.0,
+            requires_credentials=False,
+        )
+
+        def enrich_companies(self, query: Query) -> list[CompanyRecord]:
+            captured.append(query)
+            return []
+
+    register_source(FakeEnrichSource())
+    try:
+        base = CompanyRecord(
+            external_id="m",
+            name="n",
+            domain="d.cn",
+            missing_fields=frozenset({"contacts", "official_contact"}),
+        )
+        enrichment.enrich_companies([base])
+    finally:
+        unregister_source("fake-enrich")
+
+    assert len(captured) == 1
+    target = captured[0].targets[0]
+    # base 的 missing_fields 原样传递；summary 为空时编排层补标「缺摘要」。
+    assert target.missing == frozenset({"contacts", "official_contact", "summary"})
