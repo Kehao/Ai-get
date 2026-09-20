@@ -1,60 +1,132 @@
-"""数据源结果的进程内 TTL 缓存。
+"""数据源结果的 SQLite TTL 缓存（P7）。
 
 真实数据源按次计费，**同一企业的查询结果必须缓存**：TTL 内重复命中零成本，
-重复画像的重复挖掘也不再重复扣配额。这里刻意做成与具体数据源无关的通用件，
-两个 adapter 都经由它读写；P7 的持久化缓存（SQLite）落地后，只需替换本模块
-的实现而不用碰任何 adapter。
+进程重启后缓存依然有效（跨会话去重扣费）。本模块刻意做成与具体数据源无关的
+通用件——`get/set/clear` 三个函数的签名与语义与旧的进程内字典版本完全一致，
+两个 adapter（tavily/baidu/pdl）没有做过任何改动。
 
-容量上限是防泄漏的兜底：进程内字典没有淘汰策略会无限增长，
-超过上限时整体清空是可接受的粗粒度策略——缓存 miss 的代价只是一次重新计费。
+存储介质：`source_cache` 表（DDL 真源在 `server/schema/001_source_cache.sql`，
+首次使用时自动执行建表，幂等）。值用 pickle 存 BLOB——缓存对象是本地代码自己
+写入的（dataclass/dict/str），不存在反序列化不可信数据的场景；类型保真免去了
+为 CompanyRecord 手写编解码器。TTL（默认 7 天）天然限制了旧代码 pickle 的存活期，
+代码变更后最多一个 TTL 内自然淘汰；读侧再加一层防御，损坏的行直接按 miss 处理。
+
+容量上限是防膨胀的兜底：超过 `_MAX_ENTRIES` 时先清过期行，仍超则删最旧的
+`_PRUNE_COUNT` 行——缓存 miss 的代价只是一次重新计费。
 """
 
 from __future__ import annotations
 
+import pickle
+import sqlite3
 import threading
 import time
+from pathlib import Path
 
-from ..config import SOURCE_CACHE_TTL_SECONDS
+from .. import config
 
 _MAX_ENTRIES = 10_000
+_PRUNE_COUNT = 1_000
 
-_cache: dict[str, tuple[float, object]] = {}
+_SCHEMA_FILE = Path(__file__).resolve().parents[2] / "schema" / "001_source_cache.sql"
+
+_conn: sqlite3.Connection | None = None
 _lock = threading.Lock()
 
 
+def _connection() -> sqlite3.Connection:
+    """惰性建连（单连接共享 + WAL）：首次使用时建表，进程内复用。"""
+    global _conn
+    if _conn is None:
+        db_path = config.SOURCE_CACHE_DB_PATH
+        if db_path != ":memory:":
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(db_path, check_same_thread=False)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        conn.executescript(_SCHEMA_FILE.read_text(encoding="utf-8"))
+        _conn = conn
+    return _conn
+
+
+def _reset_connection() -> None:
+    """仅供测试使用：丢弃当前连接，下次使用时按（可能已改的）配置重开。"""
+    global _conn
+    with _lock:
+        if _conn is not None:
+            _conn.close()
+        _conn = None
+
+
 def get(key: str) -> object | None:
-    """取缓存值，过期或不存在返回 None（None 与「缓存了空结果」用 `_sentinel` 区分）。"""
-    with _lock:
-        entry = _cache.get(key)
-    if entry is None:
+    """取缓存值；不存在、过期或损坏返回 None。
+
+    「缓存了空结果」由调用方的值语义承载（如各源缓存的空串哨兵），
+    本层不区分 miss 与空结果——与旧进程内版本对调用方的可见行为一致。
+    """
+    row = _fetch(key)
+    if row is None:
         return None
-    expires_at, value = entry
-    if expires_at < time.monotonic():
+    try:
+        return pickle.loads(row)
+    except Exception:  # noqa: BLE001 — 旧代码的 pickle 无法还原时按 miss 处理并清除
         with _lock:
-            _cache.pop(key, None)
+            _connection().execute("DELETE FROM source_cache WHERE cache_key = ?", (key,))
+            _connection().commit()
         return None
-    return None if value is _sentinel else value
 
 
-def set(key: str, value: object, *, ttl_seconds: int = SOURCE_CACHE_TTL_SECONDS) -> None:
-    """写入缓存。`value` 为 None 时缓存「确认过没有」的空结果，避免反复查询空档企业。"""
+def set(key: str, value: object, *, ttl_seconds: int | None = None) -> None:
+    """写入缓存。None 也会被如实缓存（get 回 None）——与旧版本语义一致。"""
+    if ttl_seconds is None:
+        ttl_seconds = config.SOURCE_CACHE_TTL_SECONDS
+    now = int(time.time())
     with _lock:
-        if len(_cache) >= _MAX_ENTRIES:
-            _cache.clear()
-        _cache[key] = (time.monotonic() + ttl_seconds, _sentinel if value is None else value)
+        conn = _connection()
+        conn.execute(
+            "INSERT OR REPLACE INTO source_cache (cache_key, source_id, value, created_at, expires_at)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (key, key.split(":", 1)[0], pickle.dumps(value), now, now + ttl_seconds),
+        )
+        _prune_if_needed(conn)
+        conn.commit()
 
 
 def clear() -> None:
     """仅供测试使用。"""
     with _lock:
-        _cache.clear()
+        conn = _connection()
+        conn.execute("DELETE FROM source_cache")
+        conn.commit()
 
 
-class _Sentinel:
-    """占位类型：区分「没缓存过」与「缓存了空结果」。"""
+def _fetch(key: str) -> bytes | None:
+    """取未过期的 value；顺手删掉已过期行（读写同表，原子性由锁保证）。"""
+    with _lock:
+        conn = _connection()
+        row = conn.execute(
+            "SELECT value, expires_at FROM source_cache WHERE cache_key = ?", (key,)
+        ).fetchone()
+        if row is None:
+            return None
+        value, expires_at = row
+        if expires_at < time.time():
+            conn.execute("DELETE FROM source_cache WHERE cache_key = ?", (key,))
+            conn.commit()
+            return None
+        return bytes(value)
 
-    def __repr__(self) -> str:  # pragma: no cover - 仅调试用
-        return "<empty>"
 
-
-_sentinel = _Sentinel()
+def _prune_if_needed(conn: sqlite3.Connection) -> None:
+    """超过容量上限：先清过期行，仍超则删最旧的 _PRUNE_COUNT 行。"""
+    count = conn.execute("SELECT COUNT(*) FROM source_cache").fetchone()[0]
+    if count < _MAX_ENTRIES:
+        return
+    conn.execute("DELETE FROM source_cache WHERE expires_at < ?", (int(time.time()),))
+    count = conn.execute("SELECT COUNT(*) FROM source_cache").fetchone()[0]
+    if count >= _MAX_ENTRIES:
+        conn.execute(
+            "DELETE FROM source_cache WHERE cache_key IN"
+            " (SELECT cache_key FROM source_cache ORDER BY created_at LIMIT ?)",
+            (_PRUNE_COUNT,),
+        )

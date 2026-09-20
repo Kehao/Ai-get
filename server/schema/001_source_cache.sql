@@ -2,14 +2,16 @@
 -- 数据源结果缓存：providers/cache.py 的 SQLite 存储介质（P7 替换进程内字典）。
 --
 -- 语义与进程内版本严格一致：
---   * value = ''   → 空串哨兵，表示「源确认过没有这条数据」，命中后不再重复扣费探测；
---   * value = JSON → 序列化的缓存对象（CompanyRecord / PDL profile / 百度 references 等）；
---   * 过期行不删（读时判断 expires_at），由定期清理语句兜底删除，避免写放大。
+--   * value 为 pickle 序列化的任意缓存对象（CompanyRecord / PDL profile / 百度
+--     references 等，本地代码自己写入，无反序列化不可信数据的场景）；
+--   * 「源确认过没有这条数据」由调用方的值语义承载（各源缓存空串哨兵），
+--     缓存层不区分 miss 与空结果；
+--   * 过期行不主动删（读时判断 expires_at），写满触发兜底清理，避免写放大。
 
 CREATE TABLE IF NOT EXISTS source_cache (
     cache_key  TEXT PRIMARY KEY,            -- 完整缓存键，如 "tavily:search:...:25"、"baidu:webenrich:{dedupe_key}"
-    source_id  TEXT NOT NULL,               -- 产生该结果的源 id（tavily / baidu / pdl），便于按源清理与审计
-    value      TEXT NOT NULL,               -- JSON 序列化的缓存对象；'' = 确认为空的哨兵
+    source_id  TEXT NOT NULL,               -- 键首段（产生结果的源 id：tavily / baidu / pdl），便于按源清理与审计
+    value      BLOB NOT NULL,               -- pickle 序列化的缓存对象
     created_at INTEGER NOT NULL,            -- 写入时间，Unix 秒
     expires_at INTEGER NOT NULL             -- 过期时间，Unix 秒（写入时 = created_at + TTL）
 );
