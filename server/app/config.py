@@ -55,12 +55,12 @@ PDL_API_KEY = os.environ.get("AIGET_PDL_API_KEY", "")
 BAIDU_SEARCH_API_KEY = os.environ.get("AIGET_BAIDU_SEARCH_API_KEY", "")
 
 # 真实源按次计费，同一企业的查询结果必须落缓存：TTL 内重复命中零成本。
-# SQLite 持久化（P7）：重启进程缓存仍在，重复挖掘不重复扣费。
-# 测试可设 AIGET_SOURCE_CACHE_DB=:memory:（tests/conftest.py 已默认设置）。
+# SQLite 持久化（P7）：缓存与挖掘列表共用一个库文件，重启后数据仍在。
+# 测试可设 AIGET_SQLITE_DB=:memory:（tests/conftest.py 已默认设置）。
 SOURCE_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
-SOURCE_CACHE_DB_PATH = os.environ.get(
-    "AIGET_SOURCE_CACHE_DB",
-    str(Path(__file__).resolve().parents[1] / "data" / "source_cache.db"),
+SQLITE_PATH = os.environ.get(
+    "AIGET_SQLITE_DB",
+    str(Path(__file__).resolve().parents[1] / "data" / "ai-get.db"),
 )
 
 COMPANY_COUNT_OPTIONS = (25, 100, 500, 1000)

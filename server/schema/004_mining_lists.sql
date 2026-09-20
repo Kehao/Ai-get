@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS mining_lists (
     criteria_json         TEXT NOT NULL DEFAULT '[]',   -- L0 生成的加权标准
     columns_json          TEXT NOT NULL DEFAULT '[]',   -- 动态列定义
     follow_up_plan_json   TEXT,                          -- 跟进计划（可能为 NULL）
+    outreach_json         TEXT,                          -- 智能触达计划（OutreachPlan JSON，可能为 NULL）
     recall_source_id TEXT NOT NULL DEFAULT '',    -- 召回来源源 id（"mock" / "tavily" / "mock+..."）
     created_at       INTEGER NOT NULL,      -- Unix 秒
     updated_at       INTEGER NOT NULL,      -- 最近一次状态变更，Unix 秒

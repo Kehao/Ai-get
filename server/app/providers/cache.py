@@ -3,13 +3,14 @@
 真实数据源按次计费，**同一企业的查询结果必须缓存**：TTL 内重复命中零成本，
 进程重启后缓存依然有效（跨会话去重扣费）。本模块刻意做成与具体数据源无关的
 通用件——`get/set/clear` 三个函数的签名与语义与旧的进程内字典版本完全一致，
-两个 adapter（tavily/baidu/pdl）没有做过任何改动。
+三个 adapter（tavily/baidu/pdl）没有做过任何改动。
 
-存储介质：`source_cache` 表（DDL 真源在 `server/schema/001_source_cache.sql`，
-首次使用时自动执行建表，幂等）。值用 pickle 存 BLOB——缓存对象是本地代码自己
-写入的（dataclass/dict/str），不存在反序列化不可信数据的场景；类型保真免去了
-为 CompanyRecord 手写编解码器。TTL（默认 7 天）天然限制了旧代码 pickle 的存活期，
-代码变更后最多一个 TTL 内自然淘汰；读侧再加一层防御，损坏的行直接按 miss 处理。
+存储介质：共享连接 `app.db`（`source_cache` 表，DDL 真源在
+`server/schema/001_source_cache.sql`）。值用 pickle 存 BLOB——缓存对象是本地
+代码自己写入的（dataclass/dict/str），不存在反序列化不可信数据的场景；类型保真
+免去了为 CompanyRecord 手写编解码器。TTL（默认 7 天）天然限制了旧代码 pickle 的
+存活期，代码变更后最多一个 TTL 内自然淘汰；读侧再加一层防御，损坏的行直接按
+miss 处理。
 
 容量上限是防膨胀的兜底：超过 `_MAX_ENTRIES` 时先清过期行，仍超则删最旧的
 `_PRUNE_COUNT` 行——缓存 miss 的代价只是一次重新计费。
@@ -19,43 +20,13 @@ from __future__ import annotations
 
 import pickle
 import sqlite3
-import threading
 import time
-from pathlib import Path
 
 from .. import config
+from .. import db
 
 _MAX_ENTRIES = 10_000
 _PRUNE_COUNT = 1_000
-
-_SCHEMA_FILE = Path(__file__).resolve().parents[2] / "schema" / "001_source_cache.sql"
-
-_conn: sqlite3.Connection | None = None
-_lock = threading.Lock()
-
-
-def _connection() -> sqlite3.Connection:
-    """惰性建连（单连接共享 + WAL）：首次使用时建表，进程内复用。"""
-    global _conn
-    if _conn is None:
-        db_path = config.SOURCE_CACHE_DB_PATH
-        if db_path != ":memory:":
-            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(db_path, check_same_thread=False)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA busy_timeout=5000")
-        conn.executescript(_SCHEMA_FILE.read_text(encoding="utf-8"))
-        _conn = conn
-    return _conn
-
-
-def _reset_connection() -> None:
-    """仅供测试使用：丢弃当前连接，下次使用时按（可能已改的）配置重开。"""
-    global _conn
-    with _lock:
-        if _conn is not None:
-            _conn.close()
-        _conn = None
 
 
 def get(key: str) -> object | None:
@@ -70,9 +41,9 @@ def get(key: str) -> object | None:
     try:
         return pickle.loads(row)
     except Exception:  # noqa: BLE001 — 旧代码的 pickle 无法还原时按 miss 处理并清除
-        with _lock:
-            _connection().execute("DELETE FROM source_cache WHERE cache_key = ?", (key,))
-            _connection().commit()
+        conn = db.connect()
+        with conn:
+            conn.execute("DELETE FROM source_cache WHERE cache_key = ?", (key,))
         return None
 
 
@@ -81,40 +52,37 @@ def set(key: str, value: object, *, ttl_seconds: int | None = None) -> None:
     if ttl_seconds is None:
         ttl_seconds = config.SOURCE_CACHE_TTL_SECONDS
     now = int(time.time())
-    with _lock:
-        conn = _connection()
+    conn = db.connect()
+    with conn:
         conn.execute(
             "INSERT OR REPLACE INTO source_cache (cache_key, source_id, value, created_at, expires_at)"
             " VALUES (?, ?, ?, ?, ?)",
             (key, key.split(":", 1)[0], pickle.dumps(value), now, now + ttl_seconds),
         )
         _prune_if_needed(conn)
-        conn.commit()
 
 
 def clear() -> None:
     """仅供测试使用。"""
-    with _lock:
-        conn = _connection()
+    conn = db.connect()
+    with conn:
         conn.execute("DELETE FROM source_cache")
-        conn.commit()
 
 
 def _fetch(key: str) -> bytes | None:
-    """取未过期的 value；顺手删掉已过期行（读写同表，原子性由锁保证）。"""
-    with _lock:
-        conn = _connection()
-        row = conn.execute(
-            "SELECT value, expires_at FROM source_cache WHERE cache_key = ?", (key,)
-        ).fetchone()
-        if row is None:
-            return None
-        value, expires_at = row
-        if expires_at < time.time():
+    """取未过期的 value；顺手删掉已过期行（读写同表，原子性由共享锁保证）。"""
+    conn = db.connect()
+    row = conn.execute(
+        "SELECT value, expires_at FROM source_cache WHERE cache_key = ?", (key,)
+    ).fetchone()
+    if row is None:
+        return None
+    value, expires_at = row
+    if expires_at < time.time():
+        with conn:
             conn.execute("DELETE FROM source_cache WHERE cache_key = ?", (key,))
-            conn.commit()
-            return None
-        return bytes(value)
+        return None
+    return bytes(value)
 
 
 def _prune_if_needed(conn: sqlite3.Connection) -> None:

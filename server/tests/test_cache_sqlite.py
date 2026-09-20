@@ -10,6 +10,7 @@ from pathlib import Path
 
 from app.providers import cache as source_cache
 from app.providers.contracts import CompanyRecord, Evidence
+from app import db
 
 
 def test_roundtrip_dataclass():
@@ -66,12 +67,12 @@ def test_persists_across_reconnection(monkeypatch):
     用项目目录下的临时库而非 pytest tmp_path——沙箱环境会拦 tmp_path 的目录创建。
     """
     db_file = Path(__file__).resolve().parent / ".cache_persist_test.db"
-    monkeypatch.setattr("app.config.SOURCE_CACHE_DB_PATH", str(db_file))
-    source_cache._reset_connection()
+    monkeypatch.setattr("app.config.SQLITE_PATH", str(db_file))
+    db.reset_connection()
     try:
         source_cache.set("persist", {"hello": "世界"})
-        source_cache._reset_connection()  # 丢掉连接 ≈ 进程重启
+        db.reset_connection()  # 丢掉连接 ≈ 进程重启
         assert source_cache.get("persist") == {"hello": "世界"}
     finally:
-        source_cache._reset_connection()
+        db.reset_connection()
         db_file.unlink(missing_ok=True)

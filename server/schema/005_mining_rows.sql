@@ -10,10 +10,11 @@ CREATE TABLE IF NOT EXISTS mining_rows (
     row_id       TEXT PRIMARY KEY,          -- 行 id（现有 rows 的 uuid hex）
     list_id      TEXT NOT NULL,             -- 所属挖掘列表（mining_lists.id）
     dedupe_key   TEXT NOT NULL DEFAULT '',  -- 企业去重键；people 行为空串（person 无 dedupe 语义）
+    row_json     TEXT NOT NULL,             -- 展示行 JSON（TargetCompany / TargetPerson，按列表 mode 区分）
     record_json  TEXT NOT NULL,             -- 完整召回记录 JSON（含 evidence / attributes / missing_fields）
     judgment_json TEXT NOT NULL DEFAULT '[]',  -- 判定结果 JSON（逐条 CriterionVerdict + score）
     score        REAL NOT NULL DEFAULT 0,   -- 综合得分（排序用，冗余自 judgment）
-    verdict      TEXT NOT NULL DEFAULT 'unknown',  -- 'qualified' | 'partial' | 'unqualified' | 'unknown'
+    verdict      TEXT NOT NULL DEFAULT 'unknown',  -- 行的 match_level（明确符合/可能符合/待确认）
     created_at   INTEGER NOT NULL,          -- Unix 秒
     FOREIGN KEY (list_id) REFERENCES mining_lists (id) ON DELETE CASCADE
 );

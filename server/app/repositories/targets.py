@@ -89,6 +89,7 @@ from ..mock.dossiers import (
     build_research_results,
 )
 from ..mock.strategy import CONDITION_COLORS, build_strategy_groups
+from . import list_store
 
 _UPLOAD_HEADER_HINTS = ("公司", "企业", "名称", "name", "company")
 
@@ -132,6 +133,9 @@ class TargetListRepository:
     def __init__(self) -> None:
         self._states: dict[str, _ListState] = {}
         self._lock = threading.RLock()
+        # P7 水合：重启后把历史列表从 SQLite 装回内存，调用方零感知。
+        for state in list_store.load_all():
+            self._states[state.target_list.id] = state
 
     # ── 列表生命周期 ────────────────────────────────────────────────────
 
@@ -176,6 +180,7 @@ class TargetListRepository:
         with self._lock:
             self._states[list_id] = state
             _apply_progress(state, stage="generating_criteria", verified=0, completed=False)
+            list_store.save(state)
         return state.target_list
 
     def create_list_from_upload(self, content: bytes) -> tuple[str, int]:
@@ -225,11 +230,15 @@ class TargetListRepository:
         with self._lock:
             self._states[list_id] = state
             _apply_progress(state, stage="completed", verified=len(rows), completed=True)
+            list_store.save(state)
         return list_id, len(names)
 
     def delete_list(self, list_id: str) -> bool:
         with self._lock:
-            return self._states.pop(list_id, None) is not None
+            existed = self._states.pop(list_id, None) is not None
+        if existed:
+            list_store.delete(list_id)
+        return existed
 
     # ── 查询 ────────────────────────────────────────────────────────────
 
@@ -419,6 +428,7 @@ class TargetListRepository:
             for index, row in enumerate(state.rows):
                 row.custom_values[column.id] = _custom_value(name, index)
             state.target_list.updated_at = datetime.now(timezone.utc)
+            list_store.save(state)
             return column
 
     def add_more(self, list_id: str, count: int) -> TargetList | None:
@@ -466,6 +476,7 @@ class TargetListRepository:
             state.target_list.progress = 100
             state.target_list.updated_at = datetime.now(timezone.utc)
             _apply_progress(state, stage="completed", verified=len(state.rows), completed=True)
+            list_store.save(state)
             return state.target_list
 
     def update_conditions(
@@ -507,6 +518,7 @@ class TargetListRepository:
                 verified=state.target_list.discovered_count,
                 completed=state.target_list.status == "completed",
             )
+            list_store.save(state)
             return state.target_list
 
     def remine(self, list_id: str) -> TargetList | None:
@@ -550,6 +562,7 @@ class TargetListRepository:
             state.target_list.contact_count = 0
             state.target_list.updated_at = now
             _apply_progress(state, stage="generating_criteria", verified=0, completed=False)
+            list_store.save(state)
             return state.target_list
 
     def retry_field(self, list_id: str, row_id: str, field_name: str) -> TargetCompany | None:
@@ -596,6 +609,7 @@ class TargetListRepository:
                 target.contact_count = len(result.items)
                 state.target_list.contact_count = _row_contact_total(state.rows)
                 state.target_list.updated_at = datetime.now(timezone.utc)
+                list_store.save(state)
             return target
 
         with self._lock:
@@ -605,6 +619,7 @@ class TargetListRepository:
             else:
                 target.official_contact_state = "ready"
             state.target_list.updated_at = datetime.now(timezone.utc)
+            list_store.save(state)
             return target
 
     def create_outreach(self, list_id: str, request: CreateOutreachRequest) -> OutreachPlan | None:
@@ -629,6 +644,7 @@ class TargetListRepository:
             state.outreach = plan
             state.target_list.follow_up_plan = f"智能触达 · {request.channel} · 5 个触点"
             state.target_list.updated_at = datetime.now(timezone.utc)
+            list_store.save(state)
             return plan
 
     def outreach(self, list_id: str) -> OutreachPlan | None:
