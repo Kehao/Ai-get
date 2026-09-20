@@ -468,3 +468,144 @@ def test_enrich_orchestration_passes_missing_hints():
     target = captured[0].targets[0]
     # base 的 missing_fields 原样传递；summary 为空时编排层补标「缺摘要」。
     assert target.missing == frozenset({"contacts", "official_contact", "summary"})
+
+
+# ── 百度 AI 搜索：web 富化（6-免1b）───────────────────────────────────────
+
+
+def test_baidu_web_enrich_aiqicha_extracts_registry_fields():
+    """爱企查命中：照面字段进 attributes（不冒充核心字段），并记录命中页标题。"""
+    from app.providers.baidu_source import BaiduSearchSource
+
+    def fake_client(payload: dict) -> dict:
+        assert payload["search_filter"]["match"]["site"] == ["aiqicha.baidu.com"]
+        return {
+            "references": [
+                {
+                    "title": "邢台云杉网络科技有限公司怎么样 - 爱企查",
+                    "url": "https://aiqicha.baidu.com/company_comment_11588980866776",
+                    "content": (
+                        "邢台云杉网络科技有限公司是一家小微企业,该公司成立于2019年04月09日,"
+                        "注册资本为5000万人民币,法定代表人为王超杰,目前处于开业状态。"
+                    ),
+                }
+            ]
+        }
+
+    source = BaiduSearchSource(api_key="test", client=fake_client)
+    records = source.enrich_companies(
+        CompanyEnrichQuery(
+            targets=(EnrichTarget(name="云杉网络", missing=frozenset({"summary"})),)
+        )
+    )
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.summary.startswith("邢台云杉网络科技有限公司")
+    assert record.source_id == "baidu"
+    assert record.attributes["source"] == "aiqicha_web"
+    # 照面字段只在 attributes：诚实标注「这是网页抽的，还带命中页标题供人工核对」。
+    assert record.attributes["registered_capital"] == "5000万人民币"
+    assert record.attributes["legal_rep"] == "王超杰"
+    assert record.attributes["founded"] == "2019年04月09日"
+    assert "爱企查" in record.attributes["matched_title"]
+
+
+def test_baidu_web_enrich_falls_back_to_web_search():
+    """爱企查未命中 → 泛搜索兜底，只补摘要、不抽照面字段。"""
+    from app.providers.baidu_source import BaiduSearchSource
+
+    def fake_client(payload: dict) -> dict:
+        if "search_filter" in payload:
+            return {"references": []}  # 阶段一：爱企查没有
+        return {
+            "references": [
+                {
+                    "title": "云杉网络 - 官网",
+                    "url": "https://www.yunshan.net/about",
+                    "content": "云杉网络是企业云安全服务商。",
+                }
+            ]
+        }
+
+    source = BaiduSearchSource(api_key="test", client=fake_client)
+    records = source.enrich_companies(
+        CompanyEnrichQuery(
+            targets=(EnrichTarget(domain="yunshan.net", name="云杉网络", missing=frozenset({"summary"})),)
+        )
+    )
+
+    assert len(records) == 1
+    assert records[0].attributes["source"] == "web_search"
+    assert "registered_capital" not in records[0].attributes
+
+
+def test_baidu_web_enrich_skips_targets_that_have_summary():
+    from app.providers.baidu_source import BaiduSearchSource
+
+    calls: list[dict] = []
+
+    def fake_client(payload: dict) -> dict:
+        calls.append(payload)
+        return {"references": []}
+
+    source = BaiduSearchSource(api_key="test", client=fake_client)
+    records = source.enrich_companies(
+        CompanyEnrichQuery(
+            targets=(EnrichTarget(name="某公司", missing=frozenset({"contacts"})),)
+        )
+    )
+
+    assert records == []
+    assert calls == []  # 帮不上忙的目标：一次调用都不发
+
+
+def test_baidu_web_enrich_is_cached():
+    from app.providers.baidu_source import BaiduSearchSource
+
+    calls: list[dict] = []
+
+    def fake_client(payload: dict) -> dict:
+        calls.append(payload)
+        return {
+            "references": [
+                {"title": "云杉网络", "url": "https://aiqicha.baidu.com/x", "content": "介绍。"}
+            ]
+        }
+
+    source = BaiduSearchSource(api_key="test", client=fake_client)
+    query = CompanyEnrichQuery(
+        targets=(EnrichTarget(name="云杉网络", missing=frozenset({"summary"})),)
+    )
+
+    source.enrich_companies(query)
+    source.enrich_companies(query)
+
+    assert len(calls) == 1
+
+
+def test_baidu_web_enrich_all_failures_raise():
+    from app.providers.baidu_source import BaiduSearchSource
+
+    def fake_client(payload: dict) -> dict:
+        raise RuntimeError("boom")
+
+    source = BaiduSearchSource(api_key="test", client=fake_client)
+    query = CompanyEnrichQuery(
+        targets=(EnrichTarget(name="某公司", missing=frozenset({"summary"})),)
+    )
+
+    with pytest.raises(SourceError) as caught:
+        source.enrich_companies(query)
+
+    assert caught.value.source_id == "baidu"
+
+
+def test_baidu_enrich_priority_between_pdl_and_tavily():
+    """瀑布顺序：权威源(PDL) > 爱企查站点限定(百度) > 泛搜索(Tavily)。"""
+    from app.providers.baidu_source import BaiduSearchSource
+    from app.providers.pdl_source import PdlSource
+    from app.providers.tavily_source import TavilySource
+
+    assert PdlSource.manifest.priority < BaiduSearchSource.manifest.priority
+    assert BaiduSearchSource.manifest.priority < TavilySource.manifest.priority

@@ -19,6 +19,7 @@ from ..config import DEFAULT_DATA_SOURCE
 from . import enrichment  # noqa: F401 — 补齐编排随包导出
 from . import mock_source  # noqa: F401 — 导入即完成注册，是唯一的注册入口
 # 真实源（P4/P5）按凭据就绪与否在各自模块内决定是否注册，缺失时静默跳过。
+from . import baidu_source  # noqa: F401
 from . import pdl_source  # noqa: F401
 from . import tavily_source  # noqa: F401
 from .contracts import (

@@ -50,6 +50,9 @@ DEFAULT_DATA_SOURCE = os.environ.get("AIGET_DATA_SOURCE", "mock")
 # 仅 base 字段（联系方式档位要付费，免费层拿不到就如实显示缺失）。
 TAVILY_API_KEY = os.environ.get("AIGET_TAVILY_API_KEY", "")
 PDL_API_KEY = os.environ.get("AIGET_PDL_API_KEY", "")
+# 百度 AI 搜索（P6 web 富化）：https://cloud.baidu.com/doc/qianfan-api/s/Hmbu8m06u
+# 千帆平台「百度搜索」，免费额度按天发放；个人实名即可开通。
+BAIDU_SEARCH_API_KEY = os.environ.get("AIGET_BAIDU_SEARCH_API_KEY", "")
 
 # 真实源按次计费，同一企业的查询结果必须落缓存：TTL 内重复命中零成本。
 # P7 的持久化缓存落地后，这里只是把存储介质从进程内字典换成 SQLite。
