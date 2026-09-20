@@ -197,7 +197,7 @@ def prompt_dir_label(mode: str = "company") -> str:
 
 
 def prompt_dir(mode: str = "company") -> Path:
-    """提示词目录的绝对路径，供读文件用。相对路径以仓库根为基准。"""
+    """提示词目录的绝对路径，供读文件用。相对路径以 server/ 为基准。"""
     path = Path(prompt_dir_label(mode))
     if not path.is_absolute():
         # app/llm/prompts.py → parents[2] 是 server/（skills/ 与 schema/ 都在其下）

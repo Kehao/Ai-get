@@ -38,16 +38,20 @@ Ai-get 从目标客户挖掘、企业背调、智能体训练，到多渠道触�
 .
 ├── AGENTS.md           # 仓库工作规则（Clean Code）
 ├── rules/              # 语言与领域专属规范
+├── doc/                # 概念文档：LLM 的角色、上游对照、召回层说明
 ├── server/             # FastAPI 后端
 │   ├── app/
 │   │   ├── routers/        # 路由层
-│   │   ├── repositories/   # 内存仓库
-│   │   ├── qualification/  # L0 资格标准 + L3 判定
-│   │   ├── providers/      # 数据源契约与演示源
+│   │   ├── repositories/   # 仓库层（内存单例 + 列表状态写穿 SQLite）
+│   │   ├── qualification/  # L0 资格标准 + L3 判定（会社与人物两套并列）
+│   │   ├── providers/      # 数据源契约、网页映射与各数据源实现
 │   │   ├── llm/            # LLM 接入（OpenAI 兼容，可关）
 │   │   ├── mock/           # 演示数据语料
 │   │   ├── models.py       # 请求/响应模型
 │   │   └── security.py     # 令牌签发与校验
+│   ├── skills/             # L0 提示词技能（contract.json 是契约唯一真源）
+│   ├── schema/             # SQLite DDL 与说明
+│   ├── tests/              # pytest（全部用假 client，零网络）
 │   ├── .env.example        # 配置模板（复制成 .env）
 │   └── requirements.txt
 ├── web/                # Vite + React 前端
@@ -58,7 +62,8 @@ Ai-get 从目标客户挖掘、企业背调、智能体训练，到多渠道触�
 │       ├── styles/         # 设计令牌与主题调色板
 │       ├── api/            # 接口封装
 │       └── store/          # 登录态与偏好设置
-└── screenshots/        # 验收截图
+├── screenshots/        # 验收截图
+└── .ref/               # 第三方站快照（本地参考用，不入版本控制）
 ```
 
 ## 本地运行
@@ -104,13 +109,17 @@ cp server/.env.example server/.env
 | `AIGET_LLM_TIMEOUT_SECONDS` | `30` | 超时即降级，不阻塞任务创建 |
 | `AIGET_LLM_MAX_TOKENS` | `4096` | 输出上限；截断会导致整批标准降级 |
 | `AIGET_LLM_JUDGE_ENABLED` | `false` | L3 逐条判定的 LLM 兜底，调用量大 |
-| `AIGET_LLM_PROMPT_DIR` | `skills/profile-to-company-criteria` | 提示词技能目录；相对路径以**仓库根**为基准。换领域时指向另一份技能即可，不必改代码 |
+| `AIGET_LLM_PROMPT_DIR` | `skills/profile-to-company-criteria` | 企业模式的提示词技能目录；**相对路径以 `server/` 为基准**。换领域时指向另一份技能即可，不必改代码 |
+| `AIGET_LLM_PERSON_PROMPT_DIR` | 空 | 「找人」模式的提示词技能目录，留空即用 `skills/profile-to-person-criteria` |
+| `AIGET_COMPANY_SOURCE` | 空 | 公司召回的专用源，留空跟随 `AIGET_DATA_SOURCE`。网页检索源没有人物能力，两个键必须分开 |
+| `AIGET_TAVILY_ENABLED` | 空 | 置 `false` 时 Tavily 即便 key 就绪也不注册（密钥不用删，改回即恢复） |
 
 ### 准入标准由谁生成
 
 画像会被 L0 解析成一组带权重的判断标准。这条路径是 **LLM 优先、规则引擎兜底**：
 
-- 开了 LLM 且调用成功 → `criteria_source = "llm"`，标签形如 `LLM · criteria/v1 · deepseek-flash`；
+- 开了 LLM 且调用成功 → `criteria_source = "llm"`，标签形如 `LLM · criteria/v2 · deepseek-flash`
+  （版本号取自 `contract.json`，找人模式是 `person-criteria/v2`）；
 - 没开 LLM，或调用失败/输出没通过校验 → `criteria_source = "rule"`，标签 `内置规则引擎`，
   并在 `criteria_fallback_reason` 里写明原因。
 
@@ -120,10 +129,15 @@ cp server/.env.example server/.env
 
 ### 提示词放在哪
 
-L0 的提示词与它的机器可读契约放在 **`skills/profile-to-company-criteria/`**，
-后端在运行时读取并渲染（`server/app/llm/prompts.py` 只是加载器，不内嵌提示词正文）。
-该目录同时被独立校验器 `scripts/validate_criteria.py` 读取，因此
-「模型按什么契约输出」与「校验器按什么契约拒绝」永远同源。详见该目录的 `SKILL.md`。
+L0 的提示词与它的机器可读契约放在 **`server/skills/profile-to-company-criteria/`**，
+找人模式则用并列的 **`server/skills/profile-to-person-criteria/`**（两份契约互不共用）。
+后端在运行时按 `AIGET_LLM_PROMPT_DIR` 读取并渲染，
+而 `server/app/llm/prompts.py` 只是加载器，不内嵌提示词正文。
+
+`contract.json` 是契约的**唯一真源**：提示词的契约表由它渲染，白名单校验
+（`server/app/qualification/criteria.py` 与 `person_criteria.py`）也按它拒绝，
+且加载时会**逐项断言**它与规则引擎自己的表一致，因此
+「模型按什么契约输出」与「校验器按什么契约拒绝」永远同源。详见各自目录的 `SKILL.md`。
 
 目录缺文件或契约与规则引擎的表不一致时，**加载即抛 `PromptAssetError`**——
 提示词是仓库资产，缺失属于检出损坏，宁可起不来也不静默降级成「LLM 看起来在工作」。
