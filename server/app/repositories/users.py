@@ -10,8 +10,8 @@ import uuid
 
 from ..models import User
 
-DEMO_EMAIL = "qiukehao388@126.com"
-DEMO_PASSWORD = "m831027"
+DEMO_EMAIL = "admin@admin.com"
+DEMO_PASSWORD = "admin123"
 
 
 class UserRepository:
@@ -22,7 +22,7 @@ class UserRepository:
         self._seed_demo_user()
 
     def _seed_demo_user(self) -> None:
-        self._store(DEMO_EMAIL, DEMO_PASSWORD, display_name="qiukehao388")
+        self._store(DEMO_EMAIL, DEMO_PASSWORD, display_name="admin")
 
     def _store(self, email: str, password: str, display_name: str) -> User:
         user = User(

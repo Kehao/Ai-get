@@ -17,8 +17,8 @@ interface LocationState {
   from?: string;
 }
 
-const DEMO_EMAIL = 'qiukehao388@126.com';
-const DEMO_PASSWORD = 'm831027';
+const DEMO_EMAIL = 'admin@admin.com';
+const DEMO_PASSWORD = 'admin123';
 
 const SignInPage = (): JSX.Element => {
   const navigate = useNavigate();

@@ -3,7 +3,7 @@
 Ai-get 是一个 AI B2B 销售智能体平台：从**目标客户挖掘**、**企业背调**、**智能体训练**，
 到**多渠道触达**与**商机洞察**，串起一条完整的智能获客链路。
 
-> 线上地址：`https://get.kehao.info`（演示账号 `qiukehao388@126.com` / `m831027`）
+> 线上地址：`https://get.kehao.info`（演示账号 `admin@admin.com` / `admin123`）
 
 ## 两种挖掘模式
 
@@ -114,7 +114,7 @@ npm install
 npm run dev
 ```
 
-**演示账号**：`qiukehao388@126.com` / `m831027`
+**演示账号**：`admin@admin.com` / `admin123`
 
 ## 部署
 

@@ -132,7 +132,7 @@ const SignUpPage = (): JSX.Element => {
           和 <Link className={styles.link} to={ROUTES.privacy}>隐私政策</Link>。
         </p>
 
-        <p className={styles.demoHint}>演示环境：预置账号 qiukehao388@126.com 可直接登录体验</p>
+        <p className={styles.demoHint}>演示环境：预置账号 admin@admin.com 可直接登录体验</p>
       </div>
     </div>
   );
