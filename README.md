@@ -1,186 +1,156 @@
-# Ai-get
+<h1 align="center">Ai-get —— AI B2B 销售智能体平台</h1>
 
-Ai-get 是一个 AI B2B 销售智能体平台：从**目标客户挖掘**、**企业背调**、**智能体训练**，
-到**多渠道触达**与**商机洞察**，串起一条完整的智能获客链路。
+<p align="center">
+  <a href="https://get.kehao.info"><img src="https://img.shields.io/badge/live--demo-brightgreen?style=flat" alt="Live Demo"></a>
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=white" alt="React 18">
+  <img src="https://img.shields.io/badge/Vite-6-646CFF?style=flat&logo=vite&logoColor=white" alt="Vite 6">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Pydantic-v2-E92063?style=flat&logo=pydantic&logoColor=white" alt="Pydantic v2">
+  <img src="https://img.shields.io/badge/LLM-DeepSeek-4D6BFF?style=flat" alt="LLM DeepSeek">
+  <img src="https://img.shields.io/badge/数据源-百度AI搜索·爱企查·Tavily·PDL-FF6A00?style=flat" alt="数据源">
+</p>
 
-> 线上地址：`https://get.kehao.info`（演示账号 `admin@admin.com` / `admin123`）
+<p align="center"><b>自然语言画像 → 双管线挖掘（规则召回 + LLM 智能发现）→ 智能体深挖档案 → L3 规则判定 → 智能触达与商机洞察。LLM 优先、规则兜底，降级留痕，开箱即用。</b></p>
 
-## 两种挖掘模式
+<p align="center">
+  <a href="https://get.kehao.info">在线预览</a> ·
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#两种挖掘模式">两种挖掘模式</a> ·
+  <a href="#架构与工作原理">架构与工作原理</a> ·
+  <a href="#改成你自己的">改成你自己的</a> ·
+  <a href="#部署">部署</a>
+</p>
 
-潜客挖掘有两条并行的产出管线，共用同一套准入标准（L0 生成）与判定标准（L3 规则）：
+> Ai-get 把「找到对的公司」到「联系上对的人」串成一条链路：<br>
+> - **普通挖掘**走规则管线：百度 AI 搜索 + 爱企查召回，秒级出结果、量大管饱；<br>
+> - **智能发现**走 LLM 管线：模型读网页提炼实体（每轮 5 家逐批落行），逐家深挖出完整档案；<br>
+> - 所有行都过同一份 **L3 规则判定**，综合结果、匹配分、逐条依据全程可解释；<br>
+> - 前端「挖掘 / 详情」双面板 + 滚动骨架 + 勾选气泡框批量深挖，过程全程可见。
 
-| | 普通挖掘 | 智能发现（agent） |
-| --- | --- | --- |
-| 原理 | 规则管线：百度 AI 搜索泛搜索 → 站点三分类过滤 → 爱企查补量 → 字段富化 | LLM 管线：检索 → **模型提炼实体**（每轮 5 家，逐批落行）→ **逐家深挖** |
-| 能挖到谁 | 只认「像企业站的页」 | 媒体页、目录页里提到的公司都能认出来 |
-| 档案深度 | 爱企查工商字段 + 网页摘要 | 官网 + 子页整理的完整档案（产品 / 商业模式 / 投资方 / 官网联系方式 / 企业 logo） |
-| 速度成本 | 秒级、便宜 | 分钟级、花模型调用（提炼 + 深挖） |
-| 适用 | 快速扫一圈、量大管饱 | 挖「藏在报道里」的公司、要完整档案 |
-
-**智能发现管线**（`server/app/agents/company_discovery/`，详细说明见该目录 README）：
-
-1. **检索**：画像原文作为查询（不拼行业词），百度 AI 搜索返回网页正文；
-2. **提炼**：模型读正文提取实体，每轮最多 5 家新实体（已找到名单避重），最多 6 轮，
-   每批落一批行、前端滚动骨架逐批显示；
-3. **深挖**（对单家企业，勾选行后在气泡框里批量逐个发起，进行中的行整行栅格化）：
-   - L1 抓已知链接 → L2 定位官网并抓首页 → L2.5 官网子页探索（链接抽取 → 关键词挑子页）→ L3 按缺失字段定向检索；
-   - 每级结束由模型整理一次，产出**结构化档案**；
-4. **回写与重判**：行名升级为工商规范名（legal_name 优先）、企业 logo、官网联系方式状态，
-   并按 L3 规则标准**重判**，刷新综合结果与匹配分。
-
-## 功能范围
-
-**营销站**：首页、相关文档、服务条款、隐私政策。
-
-**认证**：登录、注册（签发无状态令牌，演示账号开箱可用）。
-
-**控制台**
-
-| 模块 | 能力 |
-| --- | --- |
-| 潜客挖掘 | 自然语言描述客户画像，两种模式挖掘公司或联系人；列表详情页提供「挖掘 / 详情」双面板：前者可编辑寻找对象与判断条件、查看挖掘策略与进度，后者展示企业详细档案（深挖状态 + 档案字段 + 富化台账 + 智能调研 + 准入条件评估）；支持筛选、排序、分页、导出联系人、勾选气泡框批量深挖 |
-| 企业背调 | 按公司名发起背调，产出贸易网络/供应商/合规风险等数据卡片与结论文本 |
-| 训练智能体 | 配置销售智能体的画像、触达渠道与话术策略 |
-| 关联账号 | 连接邮件、LinkedIn、WhatsApp 等触达渠道 |
-| 知识库 | 抓取官网内容生成问答条目，供智能体作答时引用 |
-| 商机洞察 | 触达漏斗与 KPI 走势，按时间范围切换 |
-
-**账户体系**：账户菜单提供主题与语言的快速开关、用户中心、设置与退出登录；设置项（工作空间名称、默认渠道、结果数量、通知开关）通过接口持久化。
-
-**主题**：浅色 / 深色 / 跟随系统三档，运行时即时切换，首屏无闪烁。
-
-## 技术栈
-
-| 层 | 选型 |
-| --- | --- |
-| 前端 | Vite 6 + React 18 + TypeScript + Less（CSS Modules）+ React Router |
-| 图标 | lucide-react |
-| 后端 | FastAPI + Pydantic v2 + Uvicorn |
-| 存储 | 进程内存 + SQLite（挖掘列表状态、数据源缓存落库；`companies` / `company_enrichments` 两张表已建 DDL 但代码未接入，见 `server/schema/README.md`） |
-| LLM | OpenAI 兼容端点（默认 DeepSeek），LLM 优先、规则兜底，降级留痕 |
-| 数据源 | 百度 AI 搜索（含爱企查）、Tavily、Peopledatalabs——官方 SDK，按 key 自动注册 |
-
-## 目录结构
-
-```text
-.
-├── AGENTS.md           # 仓库工作规则（Clean Code）
-├── rules/              # 语言与领域专属规范
-├── doc/                # 概念文档（预留）
-├── server/             # FastAPI 后端
-│   ├── app/
-│   │   ├── agents/         # 智能发现 agent（company_discovery 包，含 SKILL README）
-│   │   ├── routers/        # 路由层
-│   │   ├── repositories/   # 仓库层（内存单例 + 列表状态写穿 SQLite）
-│   │   ├── qualification/  # L0 资格标准 + L3 判定（会社与人物两套并列）
-│   │   ├── providers/      # 数据源契约、网页映射与各数据源实现（含 web_fetch 网页抓取）
-│   │   ├── llm/            # LLM 接入（OpenAI 兼容，可关）
-│   │   ├── mock/           # 演示数据语料（策略组、档案构建等）
-│   │   ├── models.py       # 请求/响应模型
-│   │   └── security.py     # 令牌签发与校验
-│   ├── skills/             # L0 提示词技能（contract.json 是契约唯一真源）
-│   ├── schema/             # SQLite DDL 与说明
-│   ├── tests/              # pytest（全部用假 client，零网络）
-│   ├── .env.example        # 配置模板（复制成 .env）
-│   └── requirements.txt
-├── web/                # Vite + React 前端
-│   └── src/
-│       ├── pages/          # 页面（营销 / 认证 / 控制台）
-│       ├── layouts/        # 营销布局与控制台布局
-│       ├── components/     # 通用组件（含 Skeleton 骨架屏）
-│       ├── styles/         # 设计令牌与主题调色板
-│       ├── api/            # 接口封装
-│       └── store/          # 登录态与偏好设置
-├── screenshots/        # 验收截图
-└── .ref/               # 第三方站快照（本地参考用，不入版本控制）
-```
-
-## 本地运行
-
-**后端**（默认 `http://localhost:8000`，接口文档在 `/docs`）
+## 快速开始
 
 ```bash
+# 0. 克隆项目并进入项目根目录
+git clone https://github.com/Kehao/Ai-get.git ai-get && cd ai-get
+
+# 1. 后端：创建虚拟环境并安装依赖
 cd server
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python -m uvicorn app.main:app --port 8000 --reload
-```
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
-**前端**（默认 `http://localhost:5173`，已把 `/api` 代理到后端）
+# 2. 配置（数据源与 LLM Key 都在这里）
+cp .env.example .env      # 按需填入 AIGET_BAIDU_SEARCH_API_KEY / AIGET_LLM_API_KEY 等
 
-```bash
-cd web
+# 3. 启动后端（:8000，接口文档 /docs）
+.venv/bin/python -m uvicorn app.main:app --port 8000 --reload
+
+# 4. 前端：装依赖并启动 Vite 开发服务器（:5173，/api 已代理到后端）
+cd ../web
 npm install
-npm run dev
+npm run dev               # 浏览器打开 http://localhost:5173
 ```
 
 **演示账号**：`admin@admin.com` / `admin123`
 
-## 配置
+## 你能做什么
 
-所有配置走环境变量，来源统一是 `server/.env`（由 `app.config` 在导入时加载）。
-复制模板即可开始：
+开箱即用，至少这几条链路跑得通：
 
-```bash
-cp server/.env.example server/.env
+- **聊即挖掘**：输入「近 6 个月完成融资的 SaaS 公司」→ 智能发现分批落行（每批 5 家、滚动骨架逐批显示），行行带 AI 摘要与匹配分
+- **双管线互补**：普通挖掘秒级召回工商照面字段；智能发现能挖到「藏在 36氪 / 融资报道里」的公司——媒体页里的实体模型直接认出来
+- **深挖档案**：勾选行 → 气泡框「批量深挖」→ 逐家抓官网 / 子页 / 补缺检索，产出产品 / 商业模式 / 投资方 / 官网联系方式 / 企业 logo 完整档案（进行中的行整行栅格化）
+- **全程可解释**：每行的综合结果都能点开「准入条件评估」——逐条标准 ✓ / ✗ / 待确认 + 权重 + 依据链接
+- **LLM 不可用也不瘫**：标准生成与判定都是 LLM 优先、规则兜底，降级原因冻结进任务记录并标出
+- **企业背调**：按公司名产出贸易网络 / 供应商 / 合规风险等数据卡片
+- **触达闭环**：训练智能体 → 关联邮件 / LinkedIn / WhatsApp → 商机洞察看漏斗与 KPI
+
+## 架构与工作原理
+
+### 架构总览
+
+```
+┌──────────────────┐   HTTP/SSE    ┌──────────────────────┐   L0 标准生成    ┌──────────────────────┐
+│  web/            │ ────────────▶ │  server/app/routers  │ ──────────────▶ │  server/skills/      │
+│  React+TS+Vite   │               │  FastAPI  :8000      │               │  提示词技能+契约.json  │
+│  (:5173 dev)     │ ◀──────────── │  repositories 仓库层  │ ◀───────────── │  (contract.json 真源) │
+└──────────────────┘   JSON        └──────────┬───────────┘   标准白名单校验  └──────────────────────┘
+                                              │
+                    ┌─────────────────────────┼──────────────────────────┐
+                    ▼                         ▼                          ▼
+        ┌───────────────────────┐  ┌──────────────────────┐  ┌───────────────────────────┐
+        │ providers/ 数据源      │  │ agents/ 智能发现      │  │ qualification/ 判定        │
+        │ 百度AI搜索·爱企查·     │  │ 检索→分批提炼→深挖     │  │ L3 规则判定（纯规则零成本） │
+        │ Tavily·PDL（按key注册）│  │ v2: L1/L2/L2.5/L3    │  │ 结果+依据写回每一行         │
+        └───────────────────────┘  └──────────────────────┘  └───────────────────────────┘
+                    │                         │
+                    ▼                         ▼
+        ┌───────────────────────────────────────────────────────┐
+        │  SQLite（mining_lists / mining_rows / source_cache）   │
+        │  列表状态写穿 + 启动水合：重启后列表仍在                │
+        └───────────────────────────────────────────────────────┘
 ```
 
-`.env` 已被 `.gitignore` 排除，密钥只放在这里。**改完 `.env` 需要重启后端进程**，
-它是进程级单例，不会热加载。
+**一句话链路**：画像进 L0 生成判断标准 → 数据源/agent 召回候选 → L3 规则判定打分 → 行写穿 SQLite → 前端双面板呈现；深挖补全档案后**自动重判**刷新综合结果。
 
-| 变量 | 默认 | 说明 |
-| --- | --- | --- |
-| `AIGET_DATA_SOURCE` | `mock` | 数据源 id，见 `GET /api/targets/sources`；生产用 `baidu` |
-| `AIGET_LLM_ENABLED` | `false` | 是否用 LLM 生成准入标准（L0） |
-| `AIGET_LLM_BASE_URL` | `https://api.deepseek.com` | 任何 OpenAI 兼容端点 |
-| `AIGET_LLM_MODEL` | `deepseek-flash` | 必须用服务端认可的名字 |
-| `AIGET_LLM_API_KEY` | 空 | 密钥，只在 `.env` 里 |
-| `AIGET_LLM_TIMEOUT_SECONDS` | `60` | 超时即降级，不阻塞任务创建 |
-| `AIGET_LLM_MAX_TOKENS` | `4096` | 输出上限；截断会导致整批标准降级 |
-| `AIGET_LLM_JUDGE_ENABLED` | `false` | L3 逐条判定的 LLM 兜底，调用量大 |
-| `AIGET_LLM_PROMPT_DIR` | `skills/profile-to-company-criteria` | 企业模式的提示词技能目录；**相对路径以 `server/` 为基准**。换领域时指向另一份技能即可，不必改代码 |
-| `AIGET_LLM_PERSON_PROMPT_DIR` | 空 | 「找人」模式的提示词技能目录，留空即用 `skills/profile-to-person-criteria` |
-| `AIGET_COMPANY_SOURCE` | 空 | 公司召回的专用源，留空跟随 `AIGET_DATA_SOURCE`。网页检索源没有人物能力，两个键必须分开 |
-| `AIGET_TAVILY_ENABLED` | 空 | 置 `false` 时 Tavily 即便 key 就绪也不注册（密钥不用删，改回即恢复） |
+### 智能发现 agent（`server/app/agents/company_discovery/`）
 
-### 准入标准由谁生成
+进阶机制——与普通挖掘共用 L0/L3，但召回与档案由 agent 完成：
 
-画像会被 L0 解析成一组带权重的判断标准。这条路径是 **LLM 优先、规则引擎兜底**：
+- **检索**：画像原文即查询（不拼行业词，保证「同一画像 + 不同标准」结果可复现）；
+- **分批提炼**：每轮最多 5 家新实体（已找到名单避重），最多 6 轮，每批落行一次；
+- **深挖 v2**：L1 抓已知链接 → L2 定位官网抓首页 → L2.5 官网子页探索（链接抽取 + 关键词挑子页）→ L3 缺什么搜什么，每级由模型整理成结构化档案；
+- **回写**：行名升级为工商规范名（legal_name 优先）、企业 logo、官网联系方式状态，随后自动重判。
 
-- 开了 LLM 且调用成功 → `criteria_source = "llm"`，标签形如 `LLM · criteria/v2 · deepseek-flash`
-  （版本号取自 `contract.json`，找人模式是 `person-criteria/v2`）；
-- 没开 LLM，或调用失败/输出没通过校验 → `criteria_source = "rule"`，标签 `内置规则引擎`，
-  并在 `criteria_fallback_reason` 里写明原因。
+## 目录结构
 
-降级是**静默**的——任务照样建得出来，只是标准质量不同。因此产出方会**冻结进任务记录**
-（`criteria_source` / `criteria_label` / `criteria_fallback_reason`），列表页与详情页都会标出来。
-当前状态可查 `GET /api/llm/status`（含累计调用数、缓存命中数、最近一次失败原因；**不含密钥**）。
+| 目录/文件 | 角色 | 设计要点 |
+|---|---|---|
+| `server/app/agents/company_discovery/` | 智能发现 agent 包 | 检索 / 提炼 / 深挖 / 编排各一个模块，详见目录内 README |
+| `server/app/routers/` | FastAPI 路由层 | 控制台全部 REST 接口 |
+| `server/app/repositories/` | 仓库层 | 内存单例 + 列表状态写穿 SQLite，重启水合 |
+| `server/app/qualification/` | L0 标准解析 + L3 判定 | 会社与找人两套并列；纯规则零成本 |
+| `server/app/providers/` | 数据源层 | 官方 SDK 按 key 自动注册；`web_fetch.py` 网页抓取（零新增依赖） |
+| `server/app/llm/` | LLM 接入 | OpenAI 兼容；加载器不内嵌提示词正文 |
+| `server/skills/` | L0 提示词技能 | `contract.json` 是契约唯一真源，与白名单校验逐项断言一致 |
+| `server/tests/` | pytest | 全部假 client，离线可跑 |
+| `web/src/pages/` | 控制台页面 | 挖掘 / 背调 / 智能体 / 触达 / 洞察 |
+| `web/src/components/` | 通用组件 | Button / Modal / Skeleton 骨架屏 / ChipScroller 等，全自建零 UI 库 |
+| `web/src/styles/` | 设计令牌 | 主题调色板集中管理，浅/深色双主题 |
 
-### 提示词放在哪
+## 改成你自己的
 
-L0 的提示词与它的机器可读契约放在 **`server/skills/profile-to-company-criteria/`**，
-找人模式则用并列的 **`server/skills/profile-to-person-criteria/`**（两份契约互不共用）。
-后端在运行时按 `AIGET_LLM_PROMPT_DIR` 读取并渲染，
-而 `server/app/llm/prompts.py` 只是加载器，不内嵌提示词正文。
+| 想改什么 | 改哪里 |
+|---|---|
+| 切换数据源（换百度之外） | `.env` 改 `AIGET_DATA_SOURCE` / `AIGET_COMPANY_SOURCE`；新源 = 实现契约 + `is_configured()`，key 就绪自动注册 |
+| 切换 LLM（换 DeepSeek 之外） | `.env` 改 `AIGET_LLM_BASE_URL` / `AIGET_LLM_MODEL` / `AIGET_LLM_API_KEY`（任何 OpenAI 兼容端点） |
+| 改准入标准生成风格 | `server/skills/profile-to-*-criteria/` 改提示词与 `contract.json`（契约是唯一真源，改错启动即报错） |
+| 调判定权重与规则 | `server/app/qualification/criteria.py` / `person_criteria.py` |
+| 加智能发现档案字段 | `server/app/agents/company_discovery/spec.py` 的字段表 + `deep_dive.py` 的检索链 |
+| 改前端主题 / 视觉 | `web/src/styles/` 设计令牌；组件样式 CSS Modules 就近放置 |
+| 加页面模块 | `web/src/pages/` 加页面 + `web/src/api/` 加接口封装 |
 
-`contract.json` 是契约的**唯一真源**：提示词的契约表由它渲染，白名单校验
-（`server/app/qualification/criteria.py` 与 `person_criteria.py`）也按它拒绝，
-且加载时会**逐项断言**它与规则引擎自己的表一致，因此
-「模型按什么契约输出」与「校验器按什么契约拒绝」永远同源。详见各自目录的 `SKILL.md`。
+## 部署
 
-目录缺文件或契约与规则引擎的表不一致时，**加载即抛 `PromptAssetError`**——
-提示词是仓库资产，缺失属于检出损坏，宁可起不来也不静默降级成「LLM 看起来在工作」。
+架构上是**纯前端静态站 + 一个 Python 常驻服务**，当前跑在阿里云 ECS：
 
-> DeepSeek 官方 API 的模型名是 `deepseek-flash` 与 `deepseek-v4-pro`，
-> 别名 `deepseek-chat` 等价于 `deepseek-flash`。产品宣传名（如 `DeepSeek-V4.1-Flash`）
-> 不能直接当 `model` 传，会返回 `invalid_request_error`。
+```
+┌────────────────────────┐   HTTP/HTTPS   ┌──────────────────────┐   uvicorn   ┌──────────────────────┐
+│  静态前端 dist/         │ ─────────────▶ │  nginx :80/:443      │ ──────────▶ │  FastAPI :8000       │
+│  /var/www/ai-get-www   │ ◀────────────  │  get.kehao.info      │             │  systemd 托管         │
+└────────────────────────┘                └──────────────────────┘             └──────────────────────┘
+```
 
-## 已知限制
+- **机器**：ECS `i-bp10qalh50to546miwbf`，代码 clone 在 `/opt/ai-get`（GitHub 为主源）；
+- **前端**：node 构建 → `/var/www/ai-get-www`；
+- **后端**：uv venv（Python 3.13）+ systemd `ai-get-api.service`（失败自启、开机自启）；
+- **HTTPS**：certbot 签发 + 自动续期；
 
-- **存储不是纯内存**：`server/schema/` 下的 5 张表里，`source_cache` / `mining_lists` /
-  `mining_rows` 已在用（列表状态写穿 + 启动水合、缓存跨进程生效），
-  所以挖掘列表在服务重启后仍可回看；`companies` / `company_enrichments` 只有 DDL，
-  代码尚未接入。**账号与偏好设置**等仍是内存单例，重启回初始态。
-- **数据不按用户隔离**：新注册的账号能看到演示账号的数据。
-- 进度类接口不跑后台任务，由已用时长按比例推算，用于演示。
-- 未实现参考站的积分/算力与「安装 Skill」两个模块。
+**更新流程**：本机 `git push` 后，在服务器执行：
+
+```bash
+/opt/ai-get/update.sh
+```
+
+脚本会：拉取最新代码（GitHub 连接失败自动重试 5 次，全败则保持线上版本不动）→
+安装前端依赖 → 构建前端 → 部署静态产物 → 重启后端 → 健康检查。
