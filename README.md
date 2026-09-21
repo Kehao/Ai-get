@@ -1,6 +1,32 @@
 # Ai-get
 
-Ai-get 从目标客户挖掘、企业背调、智能体训练，到多渠道触达与商机洞察，串起一条完整的智能获客链路。
+Ai-get 是一个 AI B2B 销售智能体平台：从**目标客户挖掘**、**企业背调**、**智能体训练**，
+到**多渠道触达**与**商机洞察**，串起一条完整的智能获客链路。
+
+> 线上地址：`https://get.kehao.info`（演示账号 `qiukehao388@126.com` / `m831027`）
+
+## 两种挖掘模式
+
+潜客挖掘有两条并行的产出管线，共用同一套准入标准（L0 生成）与判定标准（L3 规则）：
+
+| | 普通挖掘 | 智能发现（agent） |
+| --- | --- | --- |
+| 原理 | 规则管线：百度 AI 搜索泛搜索 → 站点三分类过滤 → 爱企查补量 → 字段富化 | LLM 管线：检索 → **模型提炼实体**（每轮 5 家，逐批落行）→ **逐家深挖** |
+| 能挖到谁 | 只认「像企业站的页」 | 媒体页、目录页里提到的公司都能认出来 |
+| 档案深度 | 爱企查工商字段 + 网页摘要 | 官网 + 子页整理的完整档案（产品 / 商业模式 / 投资方 / 官网联系方式 / 企业 logo） |
+| 速度成本 | 秒级、便宜 | 分钟级、花模型调用（提炼 + 深挖） |
+| 适用 | 快速扫一圈、量大管饱 | 挖「藏在报道里」的公司、要完整档案 |
+
+**智能发现管线**（`server/app/agents/company_discovery/`，详细说明见该目录 README）：
+
+1. **检索**：画像原文作为查询（不拼行业词），百度 AI 搜索返回网页正文；
+2. **提炼**：模型读正文提取实体，每轮最多 5 家新实体（已找到名单避重），最多 6 轮，
+   每批落一批行、前端滚动骨架逐批显示；
+3. **深挖**（对单家企业，勾选行后在气泡框里批量逐个发起，进行中的行整行栅格化）：
+   - L1 抓已知链接 → L2 定位官网并抓首页 → L2.5 官网子页探索（链接抽取 → 关键词挑子页）→ L3 按缺失字段定向检索；
+   - 每级结束由模型整理一次，产出**结构化档案**；
+4. **回写与重判**：行名升级为工商规范名（legal_name 优先）、企业 logo、官网联系方式状态，
+   并按 L3 规则标准**重判**，刷新综合结果与匹配分。
 
 ## 功能范围
 
@@ -12,7 +38,7 @@ Ai-get 从目标客户挖掘、企业背调、智能体训练，到多渠道触�
 
 | 模块 | 能力 |
 | --- | --- |
-| 潜客挖掘 | 用自然语言描述客户画像，挖掘公司或联系人，结果按列展示、可分页、可导出联系人；列表详情页提供「挖掘 / 详情」双面板：前者可编辑寻找对象与判断条件、查看挖掘策略与进度并追加结果，后者展示点击企业后的详细档案与准入条件评估 |
+| 潜客挖掘 | 自然语言描述客户画像，两种模式挖掘公司或联系人；列表详情页提供「挖掘 / 详情」双面板：前者可编辑寻找对象与判断条件、查看挖掘策略与进度，后者展示企业详细档案（深挖状态 + 档案字段 + 富化台账 + 智能调研 + 准入条件评估）；支持筛选、排序、分页、导出联系人、勾选气泡框批量深挖 |
 | 企业背调 | 按公司名发起背调，产出贸易网络/供应商/合规风险等数据卡片与结论文本 |
 | 训练智能体 | 配置销售智能体的画像、触达渠道与话术策略 |
 | 关联账号 | 连接邮件、LinkedIn、WhatsApp 等触达渠道 |
@@ -31,6 +57,8 @@ Ai-get 从目标客户挖掘、企业背调、智能体训练，到多渠道触�
 | 图标 | lucide-react |
 | 后端 | FastAPI + Pydantic v2 + Uvicorn |
 | 存储 | 进程内存 + SQLite（挖掘列表状态、数据源缓存落库；`companies` / `company_enrichments` 两张表已建 DDL 但代码未接入，见 `server/schema/README.md`） |
+| LLM | OpenAI 兼容端点（默认 DeepSeek），LLM 优先、规则兜底，降级留痕 |
+| 数据源 | 百度 AI 搜索（含爱企查）、Tavily、Peopledatalabs——官方 SDK，按 key 自动注册 |
 
 ## 目录结构
 
@@ -38,15 +66,16 @@ Ai-get 从目标客户挖掘、企业背调、智能体训练，到多渠道触�
 .
 ├── AGENTS.md           # 仓库工作规则（Clean Code）
 ├── rules/              # 语言与领域专属规范
-├── doc/                # 概念文档：LLM 的角色、上游对照、召回层说明
+├── doc/                # 概念文档（预留）
 ├── server/             # FastAPI 后端
 │   ├── app/
+│   │   ├── agents/         # 智能发现 agent（company_discovery 包，含 SKILL README）
 │   │   ├── routers/        # 路由层
 │   │   ├── repositories/   # 仓库层（内存单例 + 列表状态写穿 SQLite）
 │   │   ├── qualification/  # L0 资格标准 + L3 判定（会社与人物两套并列）
-│   │   ├── providers/      # 数据源契约、网页映射与各数据源实现
+│   │   ├── providers/      # 数据源契约、网页映射与各数据源实现（含 web_fetch 网页抓取）
 │   │   ├── llm/            # LLM 接入（OpenAI 兼容，可关）
-│   │   ├── mock/           # 演示数据语料
+│   │   ├── mock/           # 演示数据语料（策略组、档案构建等）
 │   │   ├── models.py       # 请求/响应模型
 │   │   └── security.py     # 令牌签发与校验
 │   ├── skills/             # L0 提示词技能（contract.json 是契约唯一真源）
@@ -58,7 +87,7 @@ Ai-get 从目标客户挖掘、企业背调、智能体训练，到多渠道触�
 │   └── src/
 │       ├── pages/          # 页面（营销 / 认证 / 控制台）
 │       ├── layouts/        # 营销布局与控制台布局
-│       ├── components/     # 通用组件
+│       ├── components/     # 通用组件（含 Skeleton 骨架屏）
 │       ├── styles/         # 设计令牌与主题调色板
 │       ├── api/            # 接口封装
 │       └── store/          # 登录态与偏好设置
@@ -87,6 +116,27 @@ npm run dev
 
 **演示账号**：`qiukehao388@126.com` / `m831027`
 
+## 部署
+
+生产环境跑在两台阿里云 ECS 上（均 HTTPS，证书由 certbot 自动续期）：
+
+| 域名 | 机器 | 项目 | 形态 |
+| --- | --- | --- | --- |
+| `get.kehao.info` | i-bp10qalh50to546miwbf | **本项目（Ai-get）** | GitHub clone 到 `/opt/ai-get`；前端 node 构建 → `/var/www/ai-get-www`；后端 uv venv（Python 3.13）+ systemd `ai-get-api.service`（:8000）；nginx 80/443，`/api/` 反代后端（SSE 关缓冲） |
+| `agent.kehao.info` | i-bp1dmqyivuxuiaenul6v | DAgent | 前端 `/var/www/agent-www`，API 反代 127.0.0.1:8100（`dagent-api.service`），另有 MCP 服务 :9100 |
+| `hot.kehao.info` | 同上 | AI 新闻站（Hugo 产物） | 纯静态，80 跳 443 |
+| `www.kehao.info` | 同上 | 个人作品集（resume） | 纯静态 |
+
+**更新流程**（Ai-get）：本机 `git push` 后，在服务器执行：
+
+```bash
+/opt/ai-get/update.sh
+```
+
+脚本会：拉取最新代码（GitHub 连接失败自动重试 5 次，全败则保持线上版本不动）→
+安装前端依赖 → 构建前端 → 部署静态产物 → 重启后端 → 健康检查。
+nginx 配置在 `/etc/nginx/sites-available/`，各机备份在 `/root/nginx-backup-20260921/`。
+
 ## 配置
 
 所有配置走环境变量，来源统一是 `server/.env`（由 `app.config` 在导入时加载）。
@@ -101,12 +151,12 @@ cp server/.env.example server/.env
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| `AIGET_DATA_SOURCE` | `mock` | 数据源 id，见 `GET /api/targets/sources` |
+| `AIGET_DATA_SOURCE` | `mock` | 数据源 id，见 `GET /api/targets/sources`；生产用 `baidu` |
 | `AIGET_LLM_ENABLED` | `false` | 是否用 LLM 生成准入标准（L0） |
 | `AIGET_LLM_BASE_URL` | `https://api.deepseek.com` | 任何 OpenAI 兼容端点 |
 | `AIGET_LLM_MODEL` | `deepseek-flash` | 必须用服务端认可的名字 |
 | `AIGET_LLM_API_KEY` | 空 | 密钥，只在 `.env` 里 |
-| `AIGET_LLM_TIMEOUT_SECONDS` | `30` | 超时即降级，不阻塞任务创建 |
+| `AIGET_LLM_TIMEOUT_SECONDS` | `60` | 超时即降级，不阻塞任务创建 |
 | `AIGET_LLM_MAX_TOKENS` | `4096` | 输出上限；截断会导致整批标准降级 |
 | `AIGET_LLM_JUDGE_ENABLED` | `false` | L3 逐条判定的 LLM 兜底，调用量大 |
 | `AIGET_LLM_PROMPT_DIR` | `skills/profile-to-company-criteria` | 企业模式的提示词技能目录；**相对路径以 `server/` 为基准**。换领域时指向另一份技能即可，不必改代码 |
