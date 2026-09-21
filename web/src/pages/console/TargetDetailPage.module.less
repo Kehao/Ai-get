@@ -119,6 +119,8 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
+  // 勾选气泡框的定位锚点
+  position: relative;
 }
 
 .tableScroll {
@@ -205,6 +207,18 @@
   color: @color-accent;
   font-size: @font-xs;
   font-weight: 600;
+  // logo 图绝对定位盖在字母角标上；图加载失败（onError 隐藏）时字母自然露出。
+  position: relative;
+  overflow: hidden;
+}
+
+.markLogo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: @color-surface;
 }
 
 .companyText {
@@ -253,6 +267,32 @@
   overflow: hidden;
   color: @color-text-secondary;
   line-height: 1.7;
+}
+
+/* 深挖是本面板的主动作，所以做成描边强调款，与「重试富化」的虚线次级按钮拉开层级。
+   背景保持透明，免去实心色在深浅主题下要各写一份的麻烦。 */
+.deepDiveButton {
+  display: inline-flex;
+  align-items: center;
+  gap: @space-1;
+  margin-top: @space-2;
+  padding: @space-1 @space-2;
+  border-radius: @radius-xs;
+  border: 1px solid @color-primary-border;
+  background: transparent;
+  color: @color-accent;
+  font-size: @font-xs;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: @color-accent;
+  }
+
+  &:disabled {
+    border-color: @color-border-strong;
+    color: @color-text-tertiary;
+    cursor: default;
+  }
 }
 
 .retryButton {
@@ -1100,7 +1140,9 @@
 .researchItem {
   display: flex;
   align-items: center;
-  gap: @space-2;
+  // 摘要占满一行（basis 100%）时自动换到标题下方，长联系方式不再与标题重叠
+  flex-wrap: wrap;
+  gap: @space-1 @space-2;
   padding: @space-2 @space-3;
   border: 1px solid @color-border;
   border-radius: @radius-sm;
@@ -1118,8 +1160,11 @@
 
 .researchSummaryReady,
 .researchSummaryEmpty {
-  flex: none;
-  white-space: nowrap;
+  // 独占一整行、允许折行：联系方式原文（电话；邮箱）多长都放得下
+  flex: 1 1 100%;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-all;
   font-size: 11px;
 }
 
@@ -1133,8 +1178,7 @@
 
 .evidenceButton {
   flex: none;
-  padding: 0;
-  border: none;
+  padding: 0;  border: none;
   background: transparent;
   font-family: inherit;
   font-size: 11px;
@@ -1406,4 +1450,109 @@
   .panel {
     width: 288px;
   }
+}
+
+// 官网联系方式弹层：条目卡片化，一行一条
+.officialContactBody {
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+}
+
+.officialContactItem {
+  display: flex;
+  align-items: baseline;
+  gap: @space-2;
+  padding: @space-2 @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface-muted;
+  font-size: @font-xs;
+}
+
+.officialContactLabel {
+  flex: none;
+  color: @color-text-tertiary;
+}
+
+.officialContactValue {
+  min-width: 0;
+  color: @color-text;
+  word-break: break-all;
+
+  a&,
+  &a {
+    color: @color-accent;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+// 勾选气泡框：浮在表格左上，列选中行 + 已深挖/未深挖区分 + 批量深挖
+.selectedBubble {
+  position: absolute;
+  top: 56px;
+  // 右移避开复选框列：勾选/取消勾选操作不被气泡挡住
+  left: 88px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: @space-2;
+  width: 280px;
+  max-height: 380px;
+  padding: @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.bubbleHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: @font-xs;
+  color: @color-text;
+}
+
+.bubbleList {
+  display: flex;
+  flex-direction: column;
+  gap: @space-1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.bubbleItem {
+  display: flex;
+  align-items: center;
+  gap: @space-2;
+  padding: @space-1 @space-2;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  font-size: @font-xs;
+}
+
+.bubbleName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: @color-text;
+}
+
+// 挖掘档案区块头部的深挖状态行（Tag + 仍缺清单）：整行一个带边框的小卡片
+.diveStatus {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: @space-2;
+  margin-bottom: @space-2;
+  padding: @space-2 @space-3;
+  border: 1px solid @color-border;
+  border-radius: @radius-sm;
+  background: @color-surface-muted;
 }

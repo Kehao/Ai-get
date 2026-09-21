@@ -63,7 +63,10 @@ def build_evaluations(judgment: Judgment | None) -> list[ConditionEvaluation]:
 def build_research_results(company: TargetCompany) -> list[ResearchResult]:
     domain = company.website
     contacts_ready = company.contact_state == "ready" and company.contact_count > 0
-    official_ready = company.official_contact_state == "ready"
+    # 就绪必须**有内容**背书：状态 ready 但 agent_fields 里没有联系方式原文，
+    # 一律按未找到显示——「已获取」不能是空头支票（实测踩过）。
+    official_note = (company.agent_fields.get("official_contact") or "").strip()
+    official_found = company.official_contact_state == "ready" and official_note != ""
 
     return [
         ResearchResult(
@@ -80,11 +83,11 @@ def build_research_results(company: TargetCompany) -> list[ResearchResult]:
         ResearchResult(
             key="official_contact",
             title="官网联系方式挖掘",
-            state=company.official_contact_state,
-            summary="已获取邮箱" if official_ready else "未找到结果",
+            state="ready" if official_found else company.official_contact_state,
+            summary=official_note if official_found else "未找到结果",
             evidence=(
                 [f"{domain} 页脚公开了客服邮箱与联系电话"]
-                if official_ready
+                if official_found
                 else ["官网对爬虫返回访问受限页面", "暂未取到可用的邮箱或电话"]
             ),
         ),

@@ -13,24 +13,33 @@
 
 ## 进度为什么不是随机数
 
-任务进度由创建时间推算，所以不需要后台线程；但推进的是**真实阶段**
+任务进度由创建时间推算，所以普通挖掘不需要后台线程；但推进的是**真实阶段**
 （`generating_criteria → searching → verifying → completed`），
 四元组计数（goal / verified / qualified / full）来自已落库的判定结果，
 因此恒满足 `full ≤ qualified ≤ verified ≤ goal`——进度条不会和数字打架。
+
+唯一的例外是智能发现：提炼按批（每批 5 家）在后台线程里跑，每落一批
+`discovered_count` 才前移一格——它的进度是**真实的逐批推进**，不是推算。
 """
 
 from __future__ import annotations
 
 import csv
 import io
+import logging
 import threading
 import time
 import uuid
 import zlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import cast
 
+from ..agents.company_discovery.adapters import (
+    deepen_project_entity,
+    extract_project_entities,
+    search_project_documents,
+)
 from ..config import MINING_DURATION_SECONDS, MINING_PHASE_WEIGHTS
 from ..models import (
     CompanyPage,
@@ -56,6 +65,7 @@ from ..providers import (
     CompanyQuery,
     CompanyRecord,
     ContactQuery,
+    Evidence,
     PersonQuery,
     PersonRecord,
     SourceError,
@@ -66,6 +76,8 @@ from ..providers import (
     manifests,
     person_source,
 )
+
+logger = logging.getLogger(__name__)
 from ..qualification import (
     MATCH_FULL,
     MATCH_UNCONFIRMED,
@@ -104,6 +116,9 @@ _OUTREACH_TEMPLATE: tuple[tuple[str, str, str, str], ...] = (
 )
 
 _MATCH_LEVEL_ORDER: dict[str, int] = {"明确符合": 0, "可能符合": 1, "待确认": 2}
+
+# 深挖与发现的规模上限现在都在 agent 配置里（`server/agent-configs/*.json`），
+# 由 `app/agents/adapters.py` 读取。这里刻意不再留常量——那会变成第二个真源。
 
 # 一个列表里的行要么全是企业、要么全是人物，两种模式的行**不混存**。
 # 行与记录的类型跟着 `target_list.mode` 走，判据只有一处：`_ListState.is_people`。
@@ -232,6 +247,128 @@ class TargetListRepository:
             _apply_progress(state, stage="completed", verified=len(rows), completed=True)
             list_store.save(state)
         return list_id, len(names)
+
+    def create_list_from_agent(self, profile: str, count: int = 0) -> TargetList:
+        """创建「智能发现」列表：先落一张 running 的空表**立即返回**，后台逐批补行。
+
+        `count` 是前端「结果数量」选择框的值（0＝不指定，走 agent 配置默认），
+        由 `_agent_search_plan` 折算成检索条数与提炼轮数。
+
+        提炼按批走（每批最多 5 家）：每落一批行，`discovered_count` 就前移一格——
+        分页只展示 `rows[:discovered_count]`，详情页现有的 2.5 秒轮询会自然把
+        新一批行显示出来，不需要额外的推送通道。
+
+        **评判与打分与 `create_list` 完全同源**：同样的 L0 标准生成、同样的
+        L3 规则判定（纯规则、零额外成本）、同样的准入条件评估——提炼阶段
+        模型顺带读出的 summary / 行业 / 融资阶段正是判定的输入。
+
+        后台线程的每次状态改动都拿 `self._lock`，与前台读写互斥；线程是 daemon，
+        进程退出时未跑完的批次直接丢弃——水合层会把 running 列表按 completed
+        收尾，已落库的行不丢。
+        """
+        build = _build_criteria("company", profile)
+        criteria = list(build.criteria)
+
+        list_id = uuid.uuid4().hex[:12]
+        columns = _default_columns(list_id, "company")
+        now = datetime.now(timezone.utc)
+
+        target_list = TargetList(
+            id=list_id,
+            query=f"智能发现：{profile}",
+            mode="company",
+            status="running",
+            progress=0,
+            requested_count=0,
+            discovered_count=0,
+            contact_count=0,
+            condition_items=_conditions_from_criteria(criteria),
+            strategy_groups=[],
+            follow_up_plan=None,
+            created_at=now,
+            updated_at=now,
+            phase="searching",
+            source_id="agent-discovery",
+            source_name="智能发现 agent",
+        )
+        _stamp_criteria_source(target_list, build)
+        state = _ListState(
+            target_list=target_list,
+            rows=[],
+            criteria=criteria,
+            columns=columns,
+        )
+        with self._lock:
+            self._states[list_id] = state
+            list_store.save(state)
+
+        threading.Thread(
+            target=self._run_agent_discovery,
+            args=(state, profile, count),
+            daemon=True,
+            name=f"agent-discovery-{list_id}",
+        ).start()
+        return state.target_list
+
+    def _run_agent_discovery(self, state: _ListState, profile: str, count: int = 0) -> None:
+        """智能发现的后台执行体：检索 → 分批提炼 → 每批落行并写穿。"""
+        top_k, max_documents, max_rounds = _agent_search_plan(count)
+        # 计划总数提前暴露（轮数 × 每批 5）：前端据此给「还没到的批次」铺骨架——
+        # 第一批落 5 行，下面就垫 15 行灰条，逐批消减；跑完回填真实行数。
+        expected = (max_rounds or 3) * 5
+        with self._lock:
+            state.target_list.requested_count = expected
+            list_store.save(state)
+        try:
+            documents = search_project_documents(profile, top_k=top_k)
+            extract_project_entities(
+                profile,
+                documents,
+                on_batch=lambda batch: self._append_agent_batch(state, batch, documents),
+                max_documents=max_documents,
+                max_rounds=max_rounds,
+            )
+        except Exception:  # noqa: BLE001 — 后台线程不能把异常带崩进程；失败按完成收尾
+            logger.warning("智能发现后台执行失败：%s", state.target_list.id, exc_info=True)
+        finally:
+            with self._lock:
+                _apply_progress(state, stage="completed", verified=len(state.rows), completed=True)
+                state.target_list.requested_count = len(state.rows)
+                detail = state.target_list.progress_detail
+                if detail is not None:
+                    # 通用收尾话术是「已达到目标数量」——智能发现的目标只是折算规模，
+                    # 实际行数由材料决定，照实说。
+                    detail.stop_reason = (
+                        f"共发现 {len(state.rows)} 家候选（按选择规模折算检索与提炼轮数，实际以材料为准）"
+                        if state.rows
+                        else "这批网页里没有提炼出符合条件的候选，可换个画像描述再试"
+                    )
+                list_store.save(state)
+
+    def _append_agent_batch(self, state: _ListState, batch: tuple[dict, ...], documents: tuple[dict, ...]) -> None:
+        """把一批提炼实体落成行（判定与普通挖掘同源），落完立即写穿。"""
+        with self._lock:
+            now = datetime.now(timezone.utc)
+            for offset, entity in enumerate(batch):
+                index = len(state.rows)
+                record, row = _candidate_to_row(
+                    entity,
+                    documents=documents,
+                    row_id=f"row-{_seed_from(state.target_list.id)}-{index}",
+                    created_at=now,
+                )
+                judgment = _judge_record("company", list(state.criteria), record)
+                # 规则判定为准（与普通挖掘同口径）：模型初判保留在 dossier_reason 里互相印证。
+                row.match_level = _match_level(judgment.match_level)
+                row.match_reason = judgment.reason
+                row.score = judgment.score
+                state.rows.append(row)
+                state.records[_record_key(record)] = record
+                state.judgments[row.id] = judgment
+            state.target_list.discovered_count = len(state.rows)
+            state.target_list.progress = min(85, 4 * len(state.rows))
+            state.target_list.updated_at = now
+            list_store.save(state)
 
     def delete_list(self, list_id: str) -> bool:
         with self._lock:
@@ -613,12 +750,102 @@ class TargetListRepository:
                 list_store.save(state)
             return target
 
+        if field_name == "official_contact":
+            # 官网联系方式的唯一真实来源是深挖（抓官网 + 模型整理）。旧实现什么都不
+            # 抓就把状态置 ready，搞出一批「已获取但空空如也」的行——改为真走深挖。
+            return self.deep_dive_company(list_id, row_id)
+
         with self._lock:
-            if field_name == "summary":
-                target.summary_state = "ready"
-                target.ai_summary = _resummarize(target, index)
-            else:
-                target.official_contact_state = "ready"
+            target.summary_state = "ready"
+            target.ai_summary = _resummarize(target, index)
+            state.target_list.updated_at = datetime.now(timezone.utc)
+            list_store.save(state)
+            return target
+
+    def deep_dive_company(self, list_id: str, row_id: str) -> TargetCompany | None:
+        """对一行企业做深挖：抓页面 → 定位官网 → 用 LLM 把档案补齐。**仅会社模式支持。**
+
+        与 `retry_field` 的分工：那个是「向数据源再要一次同一个字段」，
+        这个是「换一套手段把整份档案补齐」——所以它一次改多个字段，
+        并把结论写进 `dossier_*` 三个字段，让前端能说清「挖过了、还缺什么」。
+
+        深挖要跑 LLM 和外部抓取，单次十几秒，因此**必须在锁外调用**：
+        占着 `self._lock` 会让同一列表的分页、详情、保存一起卡住。
+        """
+        with self._lock:
+            state = self._states.get(list_id)
+            if state is None:
+                return None
+            if state.is_people:
+                raise ValueError("找人模式暂不支持深挖：深挖面向企业档案")
+            row = next((item for item in state.rows if item.id == row_id), None)
+            if row is None:
+                return None
+
+            target = cast(TargetCompany, row)
+            record = _record_of(state, row)
+            documents = _documents_from_evidence(record)
+            domain = target.website or (
+                record.domain if isinstance(record, CompanyRecord) else ""
+            )
+            profile = state.target_list.query
+            name = target.company_name
+
+        try:
+            dossier = deepen_project_entity(profile, name, documents, domain=domain)
+        except Exception as error:  # noqa: BLE001 — 深挖失败不该让接口报 500
+            # 把原因写进状态再返回：前端能显示「深挖失败：…」，
+            # 用户也知道该去查配置，而不是反复点。
+            #
+            # 这里捕的是宽泛的 Exception：`deepen_entity` 对检索、抓取、整理都已静默降级，
+            # 能冒到这里的只可能是配置损坏或适配器故障——那些同样该被展示成状态，
+            # 而不是变成一屏堆栈。
+            with self._lock:
+                target.dossier_state = "failed"
+                target.dossier_reason = f"深挖失败：{error}"
+                state.target_list.updated_at = datetime.now(timezone.utc)
+                list_store.save(state)
+                return target
+
+        with self._lock:
+            website_before = target.website
+            written, extra = _apply_dossier(target, record, dossier)
+            # 行的稳定键就是 website，补上域名会让键漂移——必须一并搬一次 records 的索引，
+            # 否则详情页的 References 与富化台账会突然查不到这家公司的原始记录。
+            enriched = record
+            if isinstance(record, CompanyRecord) and (
+                target.website != website_before or written or extra
+            ):
+                # 重判要吃**记录本体**字段（location/employees/funding_stage/…），
+                # _apply_dossier 只写了行——这里把深挖补全同步回记录，判定才见得到。
+                moved = replace(
+                    record,
+                    domain=target.website,
+                    name=target.company_name or record.name,
+                    industries=tuple(target.industries) or record.industries,
+                    summary=target.ai_summary or record.summary,
+                    location=target.location or record.location,
+                    employees=target.employees or record.employees,
+                    funding_stage=target.funding_stage or record.funding_stage,
+                    attributes={**record.attributes, **extra, **written},
+                )
+                state.records.pop(_record_key(record), None)
+                state.records[_record_key(moved)] = moved
+                enriched = moved
+            # 无行落点的字段进 agent_fields：前端「挖掘档案」区块逐键展示。
+            if extra:
+                target.agent_fields = {**(target.agent_fields or {}), **extra}
+
+            # 深挖后重判（综合结果流程）：档案补齐了判定要吃的字段（地区/规模/融资
+            # 阶段/行业…），带着补全后的记录再过一次 L3 规则判定——综合结果与
+            # 匹配分随之刷新。模型初判留在 dossier_reason，规则结论在 match_reason，
+            # 两个口径都能看到、互不覆盖。
+            if isinstance(enriched, CompanyRecord) and state.criteria:
+                judgment = _judge_record("company", list(state.criteria), enriched)
+                target.match_level = _match_level(judgment.match_level)
+                target.match_reason = judgment.reason
+                target.score = judgment.score
+
             state.target_list.updated_at = datetime.now(timezone.utc)
             list_store.save(state)
             return target
@@ -867,8 +1094,14 @@ def _record_key(record: CompanyRecord | PersonRecord) -> str:
     这样「行 → 原始记录」的回查不需要额外维护一份映射。
     人物刻意不用 `PersonRecord.dedupe_key`：它在档案地址缺失时会退化成 `姓名@公司`，
     而行上没有这个值，回查会静默落空。
+
+    ⚠️ 主字段为空时必须**退化到名称**，不能留空串：百度召回的第二阶段
+    （爱企查站点限定）返回的候选天生没有域名，多条空键会在索引里互相覆盖，
+    回查时张冠李戴。`baidu_source._company_key` 早就是这个口径，这里跟上。
     """
-    return record.domain if isinstance(record, CompanyRecord) else record.source_url
+    if isinstance(record, CompanyRecord):
+        return record.domain.strip() or record.name.strip()
+    return record.source_url.strip() or record.name.strip()
 
 
 def _index_records(records: list[CompanyRecord] | list[PersonRecord]) -> dict[str, CompanyRecord | PersonRecord]:
@@ -877,8 +1110,14 @@ def _index_records(records: list[CompanyRecord] | list[PersonRecord]) -> dict[st
 
 
 def _row_key(row: RowT) -> str:
-    """行的稳定键，与 `_record_key` 一一对应。"""
-    return row.website if isinstance(row, TargetCompany) else row.source_url
+    """行的稳定键，与 `_record_key` **逐字对应**——包括空值退化的口径。
+
+    两个键任何一处对不齐，「行 → 原始记录」的回查都会静默落空：
+    详情页的 References 与富化台账会凭空消失，而不会报错。
+    """
+    if isinstance(row, TargetCompany):
+        return row.website.strip() or row.company_name.strip()
+    return row.source_url.strip() or row.name.strip()
 
 
 def _row_title(row: RowT) -> str:
@@ -894,6 +1133,183 @@ def _row_contact_total(rows: list[RowT]) -> int:
 def _record_of(state: _ListState, row: RowT) -> CompanyRecord | PersonRecord | None:
     """按行的稳定键回查数据源记录。判定与证据都要回到原始记录，而不是从展示字段倒推。"""
     return state.records.get(_row_key(row))
+
+
+def _candidate_to_row(
+    entity: dict,
+    documents: Sequence[Mapping[str, Any]],
+    *,
+    row_id: str,
+    created_at: datetime,
+) -> tuple[CompanyRecord, TargetCompany]:
+    """把提炼出的候选折成「记录 + 行」——**轻档案**，还没深挖。
+
+    与该实体相关的原始网页存进行 `evidence`：详情页点「深挖」时，
+    `_documents_from_evidence` 取它们当材料，两段流程就此衔接。
+
+    提炼阶段模型已顺带读出 `summary` / `industries` / `location` / `funding_stage`
+    这些轻字段——它们是规则判定的输入，让智能发现的打分与普通挖掘同口径。
+    """
+    name = str(entity.get("name", "")).strip() or "未命名实体"
+    domain = str(entity.get("domain", "")).strip()
+    matched = bool(entity.get("matched"))
+    reason = str(entity.get("reason", "")).strip()
+    evidence_url = str(entity.get("evidence_url", ""))
+
+    # 字段表里没有行落点的（legal_name / products / …）全部进 attributes：
+    # 数据不丢，详情页台账要展示哪个再扩白名单。
+    _row_fields = {
+        "name", "domain", "matched", "reason", "evidence_url",
+        "industries", "summary", "location", "funding_stage",
+    }
+    extra = {
+        key: ("、".join(value) if isinstance(value, (list, tuple)) else str(value))
+        for key, value in entity.items()
+        if key not in _row_fields and value
+    }
+    summary = str(entity.get("summary", "")).strip()
+    industries = tuple(str(item).strip() for item in entity.get("industries") or [])
+    location = str(entity.get("location", "")).strip()
+    funding_stage = str(entity.get("funding_stage", "")).strip()
+
+    related = [
+        page
+        for page in documents
+        if name and name in f"{page.get('title', '')} {page.get('content', '')}"
+    ]
+    evidence = tuple(
+        Evidence(
+            title=str(page.get("title", ""))[:120],
+            url=str(page.get("url", "")),
+            snippet=str(page.get("content", ""))[:200],
+        )
+        for page in related[:4]
+    ) or ((Evidence(title=name, url=evidence_url, snippet=reason),) if evidence_url else ())
+
+    record = CompanyRecord(
+        external_id=f"agent-{row_id}",
+        name=name,
+        domain=domain,
+        industries=industries,
+        summary=summary,
+        location=location,
+        funding_stage=funding_stage,
+        contact_count=0,
+        evidence=evidence,
+        missing_fields=frozenset({"contacts", "official_contact"}),
+        source_id="agent-discovery",
+        attributes={"agent": "discovery-agent", "agent_reason": reason, **extra},
+    )
+    row = TargetCompany(
+        id=row_id,
+        company_name=name,
+        website=domain,
+        industries=list(industries),
+        ai_summary=summary,
+        summary_state="ready" if summary else "failed",
+        match_level="明确符合" if matched else "可能符合",
+        match_reason=reason,
+        contact_count=0,
+        contact_state="failed",
+        official_contact_state="blocked",
+        location=location,
+        employees="",
+        funding_stage=funding_stage,
+        created_at=created_at,
+        custom_values={},
+        score=90 if matched else 45,
+        dossier_state="blocked",
+        dossier_reason=reason,
+        dossier_missing=[],
+        # 无行落点的字段（工商/产品/融资明细…）进 agent_fields，前端详情页展示。
+        agent_fields=dict(extra),
+    )
+    return record, row
+
+
+def _documents_from_evidence(record: RecordT | None) -> tuple[dict, ...]:
+    """把召回记录的证据折成深挖要的「检索结果」形状。
+
+    列表状态里只落了 `CompanyRecord`（原始检索结果没进库），但它带着 evidence：
+    `snippet` 是召回时截下的正文片段，够用来定位这家公司；L1 会按 url 重新抓全文，
+    所以这里不需要完整正文。
+    """
+    if not isinstance(record, CompanyRecord):
+        return ()
+    return tuple(
+        {"title": item.title, "url": item.url, "content": item.snippet}
+        for item in record.evidence
+        if item.url
+    )
+
+
+def _apply_dossier(
+    company: TargetCompany,
+    record: CompanyRecord | None,
+    dossier: dict,
+) -> tuple[dict[str, str], dict[str, str]]:
+    """把深挖结果填进行。**只填空字段**——深挖是补全，不是覆写。
+
+    与 `merge_enrichment` 同一口径：召回已经给出的值更接近源头，
+    深挖来的值可能出自一篇二手报道，不该反过来盖掉它。
+
+    返回**本轮新写入的键值**，供调用方并回 `record.attributes`——字段表里
+    没有行落点的字段（legal_name / products / …）也保住数据，不再白挖。
+    """
+    company.dossier_state = "ready"
+    company.dossier_reason = str(dossier.get("reason", ""))
+    company.dossier_missing = [str(item) for item in dossier.get("missing") or []]
+
+    written: dict[str, str] = {}
+
+    # 名字升级：深挖整理出的名字往往比提炼阶段的简名更完整（典型如
+    # 「领健Linkedcare」→「江苏领健智能科技有限公司」）。工商注册名最权威，
+    # 有它优先用它；否则认深挖档案的名字（整理时已做过规范升级）。相同则不动。
+    upgraded = str(dossier.get("legal_name", "")).strip() or str(dossier.get("name", "")).strip()
+    if upgraded and upgraded != company.company_name:
+        company.company_name = upgraded
+        written["name"] = upgraded
+
+    if not company.website:
+        company.website = str(dossier.get("domain", ""))
+        if company.website:
+            written["domain"] = company.website
+    if not company.ai_summary and dossier.get("summary"):
+        company.ai_summary = str(dossier["summary"])
+        company.summary_state = "ready"
+        written["summary"] = company.ai_summary
+    if not company.industries:
+        company.industries = [str(item) for item in dossier.get("industries") or []]
+        if company.industries:
+            written["industries"] = "、".join(company.industries)
+    for field_name in ("location", "employees", "funding_stage"):
+        if not getattr(company, field_name) and dossier.get(field_name):
+            setattr(company, field_name, str(dossier[field_name]))
+            written[field_name] = str(dossier[field_name])
+    # logo 由抓取层直取（非 LLM 产出），有就用——但同样只填空，不覆写。
+    if not company.logo_url and dossier.get("logo"):
+        company.logo_url = str(dossier["logo"])
+        written["logo"] = company.logo_url
+
+    # 深挖带出官网联系方式时，把调研状态一并置为就绪——表格「官网联系方式挖掘」
+    # 列与详情「智能调研」区读的都是这个状态；只写 agent_fields 不回写状态，
+    # 就会出现「档案里有邮箱、调研区却显示未找到」的矛盾（实测踩过）。
+    if str(dossier.get("official_contact", "")).strip():
+        company.official_contact_state = "ready"
+
+    # 无行落点的字段（legal_name / products / registered_capital / …）：
+    # 不丢，整批进 extra——调用方并进 record.attributes 与 row.agent_fields。
+    _with_row_field = {
+        "name", "domain", "summary", "industries", "location",
+        "employees", "funding_stage", "matched", "reason", "missing",
+        "evidence_url", "logo",
+    }
+    extra: dict[str, str] = {}
+    for key, value in dossier.items():
+        if key in _with_row_field or not value:
+            continue
+        extra[key] = "、".join(value) if isinstance(value, (list, tuple)) else str(value)
+    return written, extra
 
 
 # 富化台账展示的字段白名单：attributes 里还有 tavily_score 等内部键，不上屏。
@@ -960,9 +1376,31 @@ def _source_name(source_id: str) -> str:
 # ── 进度状态机 ────────────────────────────────────────────────────────────
 
 
+def _agent_search_plan(count: int) -> tuple[int, int, int]:
+    """把前端「结果数量」折算成智能发现的规模：`(top_k, max_documents, max_rounds)`。
+
+    百度 v2 单次检索硬上限 20 条（v1 是 10），所以 25 以上的档位**靠多轮提炼**
+    把同一批网页里的实体榨干净，而不是硬堆检索量——候选数受材料上限约束，
+    轮次模型榨干会提前停，最终行数如实回填 `requested_count`。
+    返回 0 值表示「走 agent 配置默认」。
+    """
+    if count <= 0:
+        return 0, 0, 0
+    top_k = max(10, min(count, 20))
+    max_rounds = max(2, min(6, -(-count // 5)))
+    return top_k, top_k, max_rounds
+
+
 def _refresh(state: _ListState) -> None:
-    """按已用时间推进任务阶段；完成后不再变化。"""
+    """按已用时间推进任务阶段；完成后不再变化。
+
+    智能发现列表**不参与**这套时间推算：它的行在后台线程里逐批真实落库，
+    `discovered_count` / `progress` 由线程推进——这里再按 elapsed 覆写一遍，
+    会把已落库的行重新藏回「未发现」（实测 5 行秒变 0 行）。
+    """
     if state.target_list.status == "completed":
+        return
+    if state.target_list.source_id == "agent-discovery":
         return
 
     elapsed = time.monotonic() - state.started_at

@@ -45,6 +45,7 @@ import { ROUTES } from '@/constants/routes';
 import { useAsync } from '@/hooks/useAsync';
 import { formatNumber, toDisplayDomain, toSourcePill } from '@/utils/format';
 import { isPersonDetail, toCompanyDossier, toCompanyRow, toPersonDossier, toPersonRow } from '@/utils/target-rows';
+import SkeletonRows from '@/components/Skeleton';
 
 import styles from './TargetDetailPage.module.less';
 
@@ -66,6 +67,23 @@ const ENRICH_FIELD_LABELS: Record<string, string> = {
   legal_rep: '法定代表人',
   founded: '成立时间',
   matched_title: '命中标题',
+};
+/** 智能发现挖出的档案字段（agent_fields 的键）→ 中文标签。与后端字段表同名。 */
+const AGENT_FIELD_LABELS: Record<string, string> = {
+  legal_name: '工商注册名',
+  english_name: '英文名',
+  products: '主要产品',
+  business_model: '商业模式',
+  latest_funding: '最近融资',
+  investors: '投资方',
+  registered_capital: '注册资本',
+  legal_rep: '法定代表人',
+  company_type: '企业类型',
+  business_status: '经营状态',
+  registered_address: '注册地址',
+  official_contact: '官网联系方式',
+  founded: '成立时间',
+  recent_activity: '近期活动或新闻',
 };
 const FILTER_OPTIONS = [
   { key: '', label: '全部结论' },
@@ -113,6 +131,8 @@ const TargetDetailPage = (): JSX.Element => {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [contactsRow, setContactsRow] = useState<TargetCompany | null>(null);
+  // 官网联系方式弹层：与联系人弹层同款交互——列上点「已获取」弹出完整内容。
+  const [officialContactRow, setOfficialContactRow] = useState<TargetCompany | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [outreachOpen, setOutreachOpen] = useState(false);
@@ -121,6 +141,8 @@ const TargetDetailPage = (): JSX.Element => {
   const [channel, setChannel] = useState(OUTREACH_CHANNELS[0]);
   const [agentName, setAgentName] = useState('');
   const [busy, setBusy] = useState(false);
+  // 深挖入口在勾选行后的气泡框（批量逐个深挖），详情面板不再持有按钮。
+  const [deepDiveRowIds, setDeepDiveRowIds] = useState<string[]>([]);
 
   const detail = useAsync(
     () => targetsApi.readListDetail(listId, { page, page_size: PAGE_SIZE, keyword, match_level: matchLevel, sort }),
@@ -174,6 +196,10 @@ const TargetDetailPage = (): JSX.Element => {
   const dossierView = useMemo(
     () => (dossier === null ? null : isPersonDetail(dossier) ? toPersonDossier(dossier) : toCompanyDossier(dossier)),
     [dossier],
+  );
+  const deepDiveMissing = useMemo(
+    () => (companyDossier?.company.dossier_state === 'ready' ? companyDossier.company.dossier_missing : []),
+    [companyDossier],
   );
 
   const agentOptions = useMemo(() => agents.data ?? [], [agents.data]);
@@ -229,6 +255,48 @@ const TargetDetailPage = (): JSX.Element => {
     setActiveRowId(rowId);
     setPanelTab('detail');
     setPanelOpen(true);
+  };
+
+  const runDeepDive = async (rowId: string): Promise<void> => {
+    try {
+      const company = await targetsApi.deepDive(listId, rowId);
+      // 深挖失败不抛错（后端把原因写进状态返回），所以这里看状态，而不是靠 catch 判失败。
+      const failed = company.dossier_state === 'failed';
+      showToast(
+        failed ? company.dossier_reason || '深挖失败' : '深挖完成，已补全档案字段',
+        failed ? 'error' : 'success',
+      );
+      // 两个都刷新：列表上的官网 / 行业 / 规模也被补了，只刷详情会让表格与详情对不上。
+      detail.reload();
+      rowDetail.reload();
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : '深挖失败', 'error');
+    }
+  };
+
+  // 勾选气泡框的批量深挖：只跑选中行里**未深挖**的，逐个串行执行
+  //（每行深挖中该行整行栅格化，完成后原位换回）。
+  const [archiveRow, setArchiveRow] = useState<TargetCompany | null>(null);
+  const [batchDeepDiving, setBatchDeepDiving] = useState(false);
+
+  const runBatchDeepDive = async (): Promise<void> => {
+    const targets = companyRows.filter(
+      (row) => selectedIds.includes(row.id) && row.dossier_state === 'blocked',
+    );
+    if (targets.length === 0) {
+      showToast('选中的行都已深挖过', 'success');
+      return;
+    }
+    setBatchDeepDiving(true);
+    try {
+      for (const row of targets) {
+        setDeepDiveRowIds((ids) => [...ids, row.id]);
+        await runDeepDive(row.id);
+        setDeepDiveRowIds((ids) => ids.filter((id) => id !== row.id));
+      }
+    } finally {
+      setBatchDeepDiving(false);
+    }
   };
 
   const resetDrafts = (): void => {
@@ -422,7 +490,21 @@ const TargetDetailPage = (): JSX.Element => {
         <td className={styles.indexCell}>{(page - 1) * PAGE_SIZE + index + 1}</td>
         <td>
           <div className={styles.companyCell}>
-            <span className={styles.companyMark}>{view.mark}</span>
+            <span className={styles.companyMark}>
+              {view.mark}
+              {view.logoUrl !== '' && (
+                <img
+                  className={styles.markLogo}
+                  src={view.logoUrl}
+                  alt={`${view.title} logo`}
+                  loading="lazy"
+                  onError={(event) => {
+                    // 加载失败就把图藏掉，露出垫底的字母角标——比裂图体面。
+                    event.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
+            </span>
             <div className={styles.companyText}>
               <strong>{view.title}</strong>
               <small>{view.subtitle}</small>
@@ -480,17 +562,21 @@ const TargetDetailPage = (): JSX.Element => {
           )}
         </td>
         <td onClick={(event) => event.stopPropagation()}>
-          {row.official_contact_state === 'blocked' ? (
+          {/* 以内容为准：agent_fields 里有联系方式原文才算「已获取」（点击弹层）。
+              没深挖过的行直接显示「未获取」——深挖入口在详情面板，不在表格里诱导。 */}
+          {(row.agent_fields?.official_contact ?? '').trim() !== '' ? (
             <button
               type="button"
-              className={styles.retryButton}
-              onClick={() => void retryField(row, 'official_contact')}
+              className={styles.contactButton}
+              title={row.agent_fields.official_contact}
+              onClick={() => setOfficialContactRow(row)}
             >
-              <RefreshCw size={13} />
-              官网访问受限
+              已获取
             </button>
+          ) : row.dossier_state === 'blocked' ? (
+            <span className={styles.muted}>未获取</span>
           ) : (
-            <span className={styles.muted}>已获取</span>
+            <span className={styles.muted}>未找到</span>
           )}
         </td>
         {customColumns.map((column) => (
@@ -610,6 +696,8 @@ const TargetDetailPage = (): JSX.Element => {
   }
 
   const running = targetList.status === 'running';
+  // 智能发现列表走「分批跑批」：进度由后台每批 5 家真实推进，话术与普通挖掘不同。
+  const isAgentList = targetList.source_id === 'agent-discovery';
   const rowUnit = isPeople ? '位联系人' : '家企业';
 
   return (
@@ -623,10 +711,18 @@ const TargetDetailPage = (): JSX.Element => {
           <p className={styles.toolbarQuery}>{targetList.query}</p>
           <div className={styles.toolbarMeta}>
             <Tag tone={running ? 'warning' : 'success'}>
-              {running ? MINING_PHASE_LABELS[targetList.phase ?? 'searching'] ?? '进行中' : '已完成'}
+              {running
+                ? isAgentList
+                  ? '发现中'
+                  : MINING_PHASE_LABELS[targetList.phase ?? 'searching'] ?? '进行中'
+                : '已完成'}
             </Tag>
             <span>
-              {formatNumber(targetList.discovered_count)} / {formatNumber(targetList.requested_count)} {rowUnit}
+              {/* 智能发现的分批跑批阶段 requested_count 还是 0（跑完才回填总数），
+                  此时只显示已发现数，别展示「5 / 0」这种自相矛盾的分母。 */}
+              {targetList.requested_count > 0
+                ? `${formatNumber(targetList.discovered_count)} / ${formatNumber(targetList.requested_count)} ${rowUnit}`
+                : `${formatNumber(targetList.discovered_count)} ${rowUnit}`}
             </span>
             {isPeople ? null : <span>已获取联系人 {formatNumber(targetList.contact_count)} 位</span>}
             {targetList.source_name ? <span>数据源 {targetList.source_name}</span> : null}
@@ -696,6 +792,54 @@ const TargetDetailPage = (): JSX.Element => {
 
       <div className={styles.body}>
         <section className={styles.tableArea}>
+          {/* 勾选气泡框：选中行清单 + 已深挖/未深挖区分 + 批量深挖入口。
+              浮在表格左上（复选框列旁边），取消全部勾选即消失。 */}
+          {!isPeople && selectedIds.length > 0 ? (
+            <div className={styles.selectedBubble}>
+              <div className={styles.bubbleHead}>
+                <strong>已选 {selectedIds.length} 家</strong>
+                <button
+                  type="button"
+                  className={styles.evidenceButton}
+                  onClick={() => setSelectedIds([])}
+                >
+                  取消选择
+                </button>
+              </div>
+              <ul className={styles.bubbleList}>
+                {companyRows
+                  .filter((row) => selectedIds.includes(row.id))
+                  .map((row) => {
+                    const dived = row.dossier_state === 'ready';
+                    return (
+                      <li key={row.id} className={styles.bubbleItem}>
+                        <span className={styles.bubbleName} title={row.company_name}>
+                          {row.company_name}
+                        </span>
+                        <Tag tone={dived ? 'primary' : 'warning'}>{dived ? '已深挖' : '未深挖'}</Tag>
+                        {dived ? (
+                          <button
+                            type="button"
+                            className={styles.evidenceButton}
+                            onClick={() => setArchiveRow(row)}
+                          >
+                            档案
+                          </button>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+              </ul>
+              <button
+                type="button"
+                className={styles.mineButton}
+                disabled={batchDeepDiving || !companyRows.some((r) => selectedIds.includes(r.id) && r.dossier_state === 'blocked')}
+                onClick={() => void runBatchDeepDive()}
+              >
+                {batchDeepDiving ? '深挖中，逐个进行…' : `批量深挖未深挖的 ${companyRows.filter((r) => selectedIds.includes(r.id) && r.dossier_state === 'blocked').length} 家`}
+              </button>
+            </div>
+          ) : null}
           <div className={styles.tableScroll}>
             <table className={styles.table}>
               <thead>
@@ -738,13 +882,43 @@ const TargetDetailPage = (): JSX.Element => {
                   </th>
                 </tr>
               </thead>
-              <tbody>{isPeople ? personRows.map(renderPersonRow) : companyRows.map(renderCompanyRow)}</tbody>
+              <tbody>
+                {(() => {
+                  // 滚动骨架：运行中「计划总数 − 已到行数」的部分垫灰条——
+                  // 第一批落 5 行，下面就垫剩余的骨架，逐批消减直到跑完。
+                  // 公司表比人物表多「企业关键联系人挖掘 / 官网联系方式挖掘」两列。
+                  const gridCols = isPeople ? 9 : 12 + customColumns.length;
+                  const pendingRows = running
+                    ? Math.max(0, (targetList.requested_count || 0) - rowIds.length)
+                    : 0;
+                  if (rowIds.length === 0) {
+                    return <SkeletonRows rows={Math.min(pendingRows || 6, 6)} cols={gridCols} />;
+                  }
+                  return (
+                    <>
+                      {isPeople
+                        ? personRows.map(renderPersonRow)
+                        : companyRows.map((row, index) =>
+                            // 行级深挖中：该行整行栅格化，结果取回后原位换回真实行
+                            deepDiveRowIds.includes(row.id) ? (
+                              <SkeletonRows key={row.id} rows={1} cols={gridCols} />
+                            ) : (
+                              renderCompanyRow(row, index)
+                            ),
+                          )}
+                      {pendingRows > 0 ? (
+                        <SkeletonRows rows={Math.min(pendingRows, 30)} cols={gridCols} />
+                      ) : null}
+                    </>
+                  );
+                })()}
+              </tbody>
             </table>
           </div>
 
-          {rowIds.length === 0 && !detail.loading ? (
+          {rowIds.length === 0 && !detail.loading && !running ? (
             <div className={styles.emptyRows}>
-              {running ? '正在挖掘中，稍后会陆续出现结果…' : `没有符合当前筛选条件的${isPeople ? '联系人' : '企业'}`}
+              {`没有符合当前筛选条件的${isPeople ? '联系人' : '企业'}`}
             </div>
           ) : null}
 
@@ -877,18 +1051,24 @@ const TargetDetailPage = (): JSX.Element => {
                       </button>
                     </div>
 
-                    <button
-                      type="button"
-                      className={styles.mineButton}
-                      disabled={busy || !canMine}
-                      title={canMine ? undefined : '至少保留一条判断条件后才能挖掘'}
-                      onClick={() => void startMining()}
-                    >
-                      <Search size={15} />
-                      开始挖掘
-                    </button>
-                    {canMine ? null : (
-                      <p className={styles.configHint}>请先添加或保留至少一条判断条件。</p>
+                    {/* 智能发现列表不显示「开始挖掘」：那会按条件走标准召回、把规则
+                        召回的行混进智能发现列表。编辑条件后用「保存配置」重判即可。 */}
+                    {!isAgentList && (
+                      <>
+                        <button
+                          type="button"
+                          className={styles.mineButton}
+                          disabled={busy || !canMine}
+                          title={canMine ? undefined : '至少保留一条判断条件后才能挖掘'}
+                          onClick={() => void startMining()}
+                        >
+                          <Search size={15} />
+                          开始挖掘
+                        </button>
+                        {canMine ? null : (
+                          <p className={styles.configHint}>请先添加或保留至少一条判断条件。</p>
+                        )}
+                      </>
                     )}
                   </section>
 
@@ -932,8 +1112,13 @@ const TargetDetailPage = (): JSX.Element => {
                       <h3 className={styles.cardTitle}>挖掘进度</h3>
                       <span className={styles.progressValue}>
                         <strong>{formatNumber(targetList.discovered_count)}</strong>
-                        <i>/</i>
-                        {formatNumber(targetList.requested_count)}
+                        {/* 智能发现跑批中 requested_count 还是 0（跑完才回填），别显示「5 / 0」。 */}
+                        {targetList.requested_count > 0 ? (
+                          <>
+                            <i>/</i>
+                            {formatNumber(targetList.requested_count)}
+                          </>
+                        ) : null}
                       </span>
                     </header>
 
@@ -941,9 +1126,13 @@ const TargetDetailPage = (): JSX.Element => {
                       <div className={styles.progressFill} style={{ width: `${targetList.progress}%` }} />
                     </div>
                     <p className={styles.progressHint}>
-                      {running
-                        ? `${MINING_PHASE_LABELS[targetList.phase ?? 'searching'] ?? '挖掘中'}：正在实时检索匹配企业并富化字段…`
-                        : '本轮挖掘已完成，可继续追加更多结果。'}
+                      {running && isAgentList
+                        ? '智能发现进行中：网页检索完成，正分批提炼（每批 5 家，落一批显示一批）…'
+                        : running
+                          ? `${MINING_PHASE_LABELS[targetList.phase ?? 'searching'] ?? '挖掘中'}：正在实时检索匹配企业并富化字段…`
+                          : isAgentList
+                            ? '本轮智能发现已完成，可逐家深挖补全档案。'
+                            : '本轮挖掘已完成，可继续追加更多结果。'}
                     </p>
 
                     {targetList.progress_detail ? (
@@ -978,27 +1167,34 @@ const TargetDetailPage = (): JSX.Element => {
                       </p>
                     ) : null}
 
-                    <div className={styles.moreButtons}>
-                      {MORE_OPTIONS.map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          className={value === moreCount ? styles.moreChipActive : styles.moreChip}
-                          onClick={() => setMoreCount(value)}
-                        >
-                          {value}
-                        </button>
-                      ))}
-                    </div>
+                    {/* 智能发现列表不提供「挖掘更多」：那是标准召回管线的动作（会把
+                        规则召回的行混进智能发现列表），且 25/100/500/1000 的档位与
+                        发现数量（10/20/30）不一致。要更多候选请返回潜客挖掘再发起。 */}
+                    {!isAgentList && (
+                      <>
+                        <div className={styles.moreButtons}>
+                          {MORE_OPTIONS.map((value) => (
+                            <button
+                              key={value}
+                              type="button"
+                              className={value === moreCount ? styles.moreChipActive : styles.moreChip}
+                              onClick={() => setMoreCount(value)}
+                            >
+                              {value}
+                            </button>
+                          ))}
+                        </div>
 
-                    <button
-                      type="button"
-                      className={styles.moreButton}
-                      disabled={busy}
-                      onClick={() => void addMore(moreCount)}
-                    >
-                      挖掘更多
-                    </button>
+                        <button
+                          type="button"
+                          className={styles.moreButton}
+                          disabled={busy}
+                          onClick={() => void addMore(moreCount)}
+                        >
+                          挖掘更多
+                        </button>
+                      </>
+                    )}
                   </section>
                 </div>
               ) : (
@@ -1030,6 +1226,42 @@ const TargetDetailPage = (): JSX.Element => {
                           {dossierView.linkLabel}
                         </a>
                       </header>
+
+                      {/* 深挖只对会社模式开放：它补的是企业档案字段（官网 / 行业 / 规模 / 融资）。
+                          发起按钮已移到勾选行后的气泡框，这里只展示状态与档案字段。 */}
+                      {isPeople ? null : (
+                        <section className={styles.dossierBlock}>
+                          <span className={styles.blockLabel}>挖掘档案</span>
+                          {/* 深挖状态行：已补全/待深挖 + 仍缺清单，紧凑地垫在字段列表上方 */}
+                          <div className={styles.diveStatus}>
+                            <Tag
+                              tone={companyDossier?.company.dossier_state === 'ready' ? 'success' : 'warning'}
+                            >
+                              {companyDossier?.company.dossier_state === 'ready' ? '档案已补全' : '待深挖'}
+                            </Tag>
+                            {deepDiveMissing.length > 0 ? (
+                              <span className={styles.blockMeta}>
+                                仍缺：{deepDiveMissing.join('、')}
+                              </span>
+                            ) : null}
+                          </div>
+                          {/* 深挖整理出的档案字段（agent_fields），逐键展示。 */}
+                          {companyDossier && Object.keys(companyDossier.company.agent_fields).length > 0 ? (
+                            <dl className={styles.ledgerList}>
+                              {Object.entries(companyDossier.company.agent_fields).map(([key, value]) => (
+                                <div key={key} className={styles.ledgerItem}>
+                                  <dt>{AGENT_FIELD_LABELS[key] ?? key}</dt>
+                                  <dd>{value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          ) : (
+                            <p className={styles.blockText}>
+                              勾选该行复选框，在气泡框中即可发起深挖补全档案。
+                            </p>
+                          )}
+                        </section>
+                      )}
 
                       <section className={styles.dossierBlock}>
                         <span className={styles.blockLabel}>AI 摘要</span>
@@ -1244,6 +1476,98 @@ const TargetDetailPage = (): JSX.Element => {
             ))}
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={officialContactRow !== null}
+        title={officialContactRow ? `${officialContactRow.company_name} · 官网联系方式` : '官网联系方式'}
+        description="深挖抓取的官网公开联系方式"
+        width={520}
+        onClose={() => setOfficialContactRow(null)}
+        footer={
+          <Button variant="outline" onClick={() => setOfficialContactRow(null)}>
+            关闭
+          </Button>
+        }
+      >
+        <div className={styles.officialContactBody}>
+          {(officialContactRow?.agent_fields?.official_contact ?? '')
+            .split(/[；;]/)
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .map((item) => {
+              // 条目里带邮箱的自动转成可点的 mailto；前缀文字（如「邮箱」）当标签
+              const email = item.match(/[\w.+-]+@[\w-]+\.[\w.]+/)?.[0];
+              const label = email
+                ? item.slice(0, item.indexOf(email)).replace(/[：:\s]/g, '') || '邮箱'
+                : '';
+              return (
+                <div key={item} className={styles.officialContactItem}>
+                  {email ? (
+                    <>
+                      <span className={styles.officialContactLabel}>{label}</span>
+                      <a className={styles.officialContactValue} href={`mailto:${email}`}>
+                        {email}
+                      </a>
+                    </>
+                  ) : (
+                    <span className={styles.officialContactValue}>{item}</span>
+                  )}
+                </div>
+              );
+            })}
+          {officialContactRow?.website ? (
+            <div className={styles.officialContactItem}>
+              <span className={styles.officialContactLabel}>官网</span>
+              <a
+                className={styles.officialContactValue}
+                href={`https://${officialContactRow.website}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {officialContactRow.website}
+              </a>
+            </div>
+          ) : null}
+          {(officialContactRow?.agent_fields?.official_contact ?? '').trim() === '' &&
+          (officialContactRow?.website ?? '').trim() === '' ? (
+            <p className={styles.modalEmpty}>该企业暂未记录官网联系方式。</p>
+          ) : null}
+        </div>
+      </Modal>
+
+      <Modal
+        open={archiveRow !== null}
+        title={archiveRow ? `${archiveRow.company_name} · 深挖档案` : '深挖档案'}
+        description="深挖整理的完整企业档案"
+        width={560}
+        onClose={() => setArchiveRow(null)}
+        footer={
+          <Button variant="outline" onClick={() => setArchiveRow(null)}>
+            关闭
+          </Button>
+        }
+      >
+        {(() => {
+          const entries = Object.entries(archiveRow?.agent_fields ?? {}).filter(
+            ([, value]) => String(value).trim() !== '',
+          );
+          if (entries.length === 0) {
+            return <p className={styles.modalEmpty}>该行还没有深挖出档案字段，可先深挖一次。</p>;
+          }
+          return (
+            <div className={styles.officialContactBody}>
+              {entries.map(([key, value]) => (
+                <div key={key} className={styles.officialContactItem}>
+                  <span className={styles.officialContactLabel}>
+                    {AGENT_FIELD_LABELS[key] ?? key}
+                  </span>
+                  <span className={styles.officialContactValue}>{value}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </Modal>
 
       <Modal

@@ -6,9 +6,11 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 
 from ..config import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from ..deps import current_user
+from ..llm.client import LlmError
 from ..models import (
     AddColumnRequest,
     AddMoreRequest,
+    AgentDiscoverRequest,
     CompanyPage,
     Contact,
     CountOption,
@@ -281,6 +283,53 @@ def retry_field(
     if company is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="企业记录不存在")
     return company
+
+
+@router.post("/lists/{list_id}/companies/{row_id}/deep-dive", response_model=TargetCompany)
+def deep_dive_company(
+    list_id: str,
+    row_id: str,
+    user: User = Depends(current_user),
+) -> TargetCompany:
+    """对一行企业执行深挖：抓页面、定位官网，用 LLM 把档案字段补齐。
+
+    做成显式动作为主是因为它**贵而慢**——一次请求十几秒、含 LLM 调用与外部抓取，
+    还会产生真实费用，所以不在建列表时自动跑。深挖过程中 LLM 不可用时不算接口失败：
+    结果里会带 `dossier_state="failed"` 与原因。
+    """
+    _require_list(list_id)
+    try:
+        company = target_lists.deep_dive_company(list_id, row_id)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
+    if company is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="企业记录不存在")
+    return company
+
+
+@router.post("/agent-discover", response_model=TargetList, status_code=status.HTTP_201_CREATED)
+def agent_discover(
+    payload: AgentDiscoverRequest,
+    user: User = Depends(current_user),
+) -> TargetList:
+    """创建一次「智能发现」：检索 → 分批提炼（每批 5 家）→ 落成一张新列表。
+
+    **立即返回 running 的列表**，提炼在后台逐批执行、每批 5 行地补进列表——
+    详情页的轮询会把它逐批显示出来。与「开始挖掘」并存而非替换：那条走标准
+    召回，秒级、便宜；这条走 agent，分钟级、真实花钱（约 7 次百度检索 +
+    数次模型调用），换来带官网与融资阶段的完整档案。标准生成的模型不可用时
+    返回 503——「模型挂了」与「没找到」必须可区分（提炼阶段的模型波动由
+    后台线程降级处理，不影响本次创建）。
+    """
+    try:
+        return target_lists.create_list_from_agent(payload.profile.strip(), payload.count)
+    except LlmError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"模型不可用，智能发现未执行：{error}",
+        ) from error
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
 
 
 @router.delete("/lists/{list_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)

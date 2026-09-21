@@ -105,6 +105,23 @@ class BaiduSearchSource:
     def is_configured() -> bool:
         return bool(config.BAIDU_SEARCH_API_KEY)
 
+    # ── 通用检索（供上层自行解读，不做企业映射） ────────────────────────
+
+    def search_pages(
+        self, text: str, *, site: str | None = None, top_k: int = _SEARCH_TOP_K
+    ) -> list[dict[str, Any]]:
+        """按给定文本检索网页，原样返回 `references`。
+
+        与 `search_companies` 的分工：那个把网页折算成企业候选，途中会丢弃媒体站
+        与取名失败的结果；深挖链路恰恰需要**那些被丢掉的页面**（融资报道、企业动态、
+        榜单），所以不能走映射，只能把原始网页交出去，让上层自己解读。
+        """
+        data = self._search_baidu(text, site=site, top_k=top_k)
+        items = data.get("references")
+        if not isinstance(items, list):
+            return []
+        return [item for item in items if isinstance(item, dict)]
+
     # ── company_search ──────────────────────────────────────────────────
 
     def search_companies(self, query: CompanyQuery) -> list[CompanyRecord]:
@@ -114,8 +131,13 @@ class BaiduSearchSource:
         单靠它凑不满一次挖掘的目标量；而爱企查的结果**没有企业域名**（域名是爱企查的），
         只能按名称去重。两段合并后，「有域名的优先、没有的按名称保留」——
         宁可给出「名字对但官网待补」的候选，也不拿无关公司凑数。
+
+        查询文本**直接用画像原文**，不拼 `industry_hints`。曾经会把行业词缀在
+        画像后面（理由是「行业错配属于召回层的问题」），但那让「同一句画像 + 不同标准」
+        召回出完全不同的结果、查询不再可预期——按用户原话去检索更诚实，
+        行业相关性交给判定层去判断。
         """
-        search_text = _build_search_text(query)
+        search_text = query.text.strip()
         cache_key = f"baidu:search:{search_text}:{query.limit}"
         cached = cache_get(cache_key)
         if isinstance(cached, list):
@@ -256,13 +278,6 @@ class BaiduSearchSource:
                 source_id=_MANIFEST.id,
             )
         return data
-
-
-def _build_search_text(query: CompanyQuery) -> str:
-    """召回查询：画像文本为主，行业提示只取前三个拼在后面——提示是相关性信号，
-    不是查询本身。截断到接口允许的长度由 `_search_baidu` 负责。"""
-    hints = " ".join(query.industry_hints[:3])
-    return f"{query.text} {hints}".strip()
 
 
 def _to_company_records(data: dict[str, Any], query: CompanyQuery) -> list[CompanyRecord]:

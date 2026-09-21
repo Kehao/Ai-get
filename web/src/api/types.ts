@@ -131,6 +131,16 @@ export interface TargetCompany {
   custom_values: Record<string, string>;
   /** 加权匹配得分（0-100），列表按它倒序。 */
   score: number;
+  /** 深挖（抓网页 + LLM 补全档案）的状态。`blocked`＝还没挖过，与「挖了但字段为空」区分开。 */
+  dossier_state: FieldState;
+  /** 深挖给出的结论：是否符合画像、依据是什么。 */
+  dossier_reason: string;
+  /** 深挖之后仍然缺的字段名，用来告诉用户「还差什么」。 */
+  dossier_missing: string[];
+  /** 智能发现挖出的、没有专属行字段的档案（工商照面 / 产品 / 融资明细…），键＝字段名。 */
+  agent_fields: Record<string, string>;
+  /** 企业 logo 图地址。深挖时由抓取层直取官网图标，空＝没挖过或没抓到（回落字母角标）。 */
+  logo_url: string;
 }
 
 export interface ReferenceItem {

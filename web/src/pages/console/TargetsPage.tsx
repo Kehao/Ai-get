@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, MoreHorizontal, Sparkles, Upload, User, Users } from 'lucide-react';
+import { Bot, Building2, MoreHorizontal, Sparkles, Upload, User, Users } from 'lucide-react';
 
 import * as targetsApi from '@/api/targets';
 import type { TargetList } from '@/api/types';
@@ -33,6 +33,10 @@ const LIST_ACTIONS = [
 const STATUS_TONES = { failed: 'danger', running: 'warning', completed: 'success', pending: 'neutral' } as const;
 const STATUS_LABELS = { failed: '失败', running: '进行中', completed: '已完成', pending: '排队中' } as const;
 
+/** 智能发现专用档位。检索源单次硬上限 20 条，候选取材自这批网页，
+ *  超过 30 的档位只是心理安慰——所以给智能发现自己的、诚实的小档位。 */
+const AGENT_COUNT_OPTIONS = [10, 20, 30];
+
 /** 进行中的列表用阶段名替代笼统的「进行中」，让用户知道卡在哪一步。 */
 const phaseLabel = (list: TargetList): string => {
   if (list.status !== 'running') {
@@ -49,7 +53,12 @@ const TargetsPage = (): JSX.Element => {
   const [mode, setMode] = useState<'company' | 'people'>('company');
   const [query, setQuery] = useState('');
   const [count, setCount] = useState(25);
+  // 智能发现与普通挖掘的量级不同（候选来自一批检索网页，约 30 封顶），
+  // 所以各有各的档位状态，互不干扰。
+  const [agentCount, setAgentCount] = useState(20);
   const [submitting, setSubmitting] = useState(false);
+  // 智能发现是一次分钟级的请求，独立加载态：与 submitting 混用会让两个按钮互相锁。
+  const [agentRunning, setAgentRunning] = useState(false);
 
   const overview = useAsync(() => targetsApi.readOverview(), {
     pollIntervalMs: 2500,
@@ -73,6 +82,15 @@ const TargetsPage = (): JSX.Element => {
     [countOptions.data],
   );
 
+  const agentCountItems = useMemo(
+    () =>
+      AGENT_COUNT_OPTIONS.map((value) => ({
+        key: String(value),
+        label: `${value} 家候选`,
+      })),
+    [],
+  );
+
   const handleSubmit = async (): Promise<void> => {
     const trimmed = query.trim();
     if (trimmed.length < 4) {
@@ -89,6 +107,29 @@ const TargetsPage = (): JSX.Element => {
       showToast(caught instanceof Error ? caught.message : '创建挖掘任务失败', 'error');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAgentDiscover = async (): Promise<void> => {
+    const trimmed = query.trim();
+    if (trimmed.length < 4) {
+      showToast('请至少用一句完整的话描述目标客户画像', 'error');
+      return;
+    }
+
+    setAgentRunning(true);
+    try {
+      // 「发现数量」折算成第一步检索条数与提炼轮数：10 → 检索 10 条 + 2 轮，
+      // 20/30 → 检索 20 条（源上限）+ 4/6 轮。批次落库后前端逐批显示。
+      const created = await targetsApi.agentDiscover(trimmed, agentCount);
+      // 接口现在立即返回 running 的空表，结果由后台每批 5 家补进列表——
+      // 详情页的轮询会逐批显示，不用在这里等跑完。
+      showToast(`智能发现已启动（目标 ${agentCount} 家），结果将逐批显示`, 'success');
+      navigate(ROUTES.consoleTargetDetail(created.id));
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : '智能发现失败', 'error');
+    } finally {
+      setAgentRunning(false);
     }
   };
 
@@ -191,6 +232,29 @@ const TargetsPage = (): JSX.Element => {
                 onClick={() => void handleSubmit()}
               >
                 开始挖掘潜客
+              </Button>
+              <span className={styles.countLabel}>发现数量</span>
+              <Dropdown
+                panelWidth={200}
+                items={agentCountItems}
+                onSelect={(key) => setAgentCount(Number(key))}
+                trigger={({ open }) => (
+                  <button type="button" className={[styles.countButton, open ? styles.countButtonOpen : ''].filter(Boolean).join(' ')}>
+                    <span>{agentCount}</span>
+                    <span className={styles.countUnit}>家</span>
+                  </button>
+                )}
+              />
+              <Button
+                variant="outline"
+                leadingIcon={<Bot size={15} />}
+                disabled={query.trim().length < 4 || agentRunning}
+                loading={agentRunning}
+                onClick={() => void handleAgentDiscover()}
+              >
+                {/* 等待期＝后端在同步生成评判标准（一次 LLM 调用）；标准一生成完
+                    接口就返回并立刻跳列表页，之后的批次在详情页逐批出现。 */}
+                {agentRunning ? '生成评判标准…' : '智能发现'}
               </Button>
             </div>
           </div>

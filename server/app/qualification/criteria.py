@@ -555,8 +555,8 @@ def company_hints(criteria: Sequence[Criterion]) -> CompanyHints:
 
     **刻意不做同族扩展**（人物侧做了，见 `_expand_industry_tokens`）：
     规则引擎产出的行业标准，tokens 本来就是整个族；LLM 产出的 tokens 是它
-    收敛过的词，再扩回族等于把模型的理解丢掉——而 `_build_search_text` 只取
-    前三个，最后拼进查询的会是族的前三个词，与标准里写的那个词未必是一回事。
+    收敛过的词，再扩回族等于把模型的理解丢掉。这些 tokens 随查询下发后只算
+    **提示**（数据源可自行选用，判定层也要用），不再拼进检索查询本身。
     """
     city: str | None = None
     industry: list[str] = []

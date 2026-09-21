@@ -95,5 +95,15 @@ export const retryField = (
 ): Promise<TargetCompany> =>
   request<TargetCompany>(`/targets/lists/${listId}/companies/${rowId}/retry?field=${field}`, { method: 'POST' });
 
+/** 深挖一行企业：后端抓网页、定位官网并用 LLM 补全档案。单次十几秒；
+ *  LLM 不可用时接口仍是 200，失败原因在返回体 `dossier_state` / `dossier_reason` 里。 */
+export const deepDive = (listId: string, rowId: string): Promise<TargetCompany> =>
+  request<TargetCompany>(`/targets/lists/${listId}/companies/${rowId}/deep-dive`, { method: 'POST' });
+
+/** 「智能发现」：走 discovery agent（检索 → 提炼 → 逐家深挖），约 1~2 分钟，
+ *  产出一张每行都带完整档案的新列表。模型不可用时返回 503。 */
+export const agentDiscover = (profile: string, count = 0): Promise<TargetList> =>
+  request<TargetList>('/targets/agent-discover', { method: 'POST', body: { profile, count } });
+
 export const deleteList = (listId: string): Promise<void> =>
   request<void>(`/targets/lists/${listId}`, { method: 'DELETE' });

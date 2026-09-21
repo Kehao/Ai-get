@@ -30,8 +30,10 @@ export interface RowView {
   id: string;
   /** 首列主标题：公司名 / 姓名。 */
   title: string;
-  /** 首列角标字符：官网首字母 / 姓名首字。 */
+  /** 首列角标字符：官网首字母 / 姓名首字。有 logo 时它垫在图片底下，加载失败才露出。 */
   mark: string;
+  /** 首列角标图：企业 logo。空＝没有（回落字母角标）。人物行恒为空。 */
+  logoUrl: string;
   /** 首列副标题：人物写职位，公司写地区·规模·融资。 */
   subtitle: string;
   linkLabel: string;
@@ -47,6 +49,7 @@ export const toCompanyRow = (row: TargetCompany): RowView => ({
   id: row.id,
   title: row.company_name,
   mark: toDomainInitial(row.website),
+  logoUrl: row.logo_url ?? '',
   subtitle: [row.location, row.employees, row.funding_stage].filter((part) => part !== '').join(' · '),
   linkLabel: toDisplayDomain(row.website),
   linkHref: `https://${toDisplayDomain(row.website)}`,
@@ -62,6 +65,7 @@ export const toPersonRow = (row: TargetPerson): RowView => ({
   // 人物的区域单独占「所属公司」「职位」两列，所以首列只放姓名本身，副标题补中文名与所在地。
   title: row.name,
   mark: row.name.slice(0, 1).toUpperCase(),
+  logoUrl: '',
   subtitle: [row.name_local, row.location].filter((part) => part !== '').join(' · '),
   linkLabel: `${row.source_label} · ${toDisplayDomain(row.source_url)}`,
   linkHref: row.source_url,
@@ -83,20 +87,33 @@ export const isPersonDetail = (
   detail: TargetCompanyDetail | TargetPersonDetail,
 ): detail is TargetPersonDetail => 'person' in detail;
 
-export const toCompanyDossier = (detail: TargetCompanyDetail): DossierView => ({  name: detail.company.company_name,
-  badge: 'company',
-  linkLabel: toDisplayDomain(detail.company.website),
-  linkHref: `https://${toDisplayDomain(detail.company.website)}`,
-  summary: detail.company.ai_summary,
-  fields: [
-    { label: '名称', value: detail.company.company_name },
-    { label: '行业', value: detail.company.industries.join('、') },
-    { label: '地区', value: detail.company.location },
-    { label: '规模', value: `${detail.company.employees} · ${detail.company.funding_stage}` },
-    { label: '匹配分', value: String(detail.company.score) },
-    { label: '创建时间', value: formatFullDateTime(detail.company.created_at) },
-  ],
-});
+export const toCompanyDossier = (detail: TargetCompanyDetail): DossierView => {
+  const company = detail.company;
+  const fields: DossierField[] = [
+    { label: '名称', value: company.company_name },
+    { label: '行业', value: company.industries.join('、') },
+    { label: '地区', value: company.location },
+    { label: '规模', value: `${company.employees} · ${company.funding_stage}` },
+    { label: '匹配分', value: String(company.score) },
+    { label: '创建时间', value: formatFullDateTime(company.created_at) },
+  ];
+  // 深挖结论只在挖过之后才占一行：没挖过时显示「未深挖」是噪声，
+  // 面板上的深挖按钮本身已经说明了这件事。
+  if (company.dossier_state !== 'blocked' && company.dossier_reason !== '') {
+    fields.push({ label: '深挖结论', value: company.dossier_reason });
+  }
+  if (company.dossier_state === 'ready' && company.dossier_missing.length > 0) {
+    fields.push({ label: '仍缺字段', value: company.dossier_missing.join('、') });
+  }
+  return {
+    name: company.company_name,
+    badge: 'company',
+    linkLabel: toDisplayDomain(company.website),
+    linkHref: `https://${toDisplayDomain(company.website)}`,
+    summary: company.ai_summary,
+    fields,
+  };
+};
 
 export const toPersonDossier = (detail: TargetPersonDetail): DossierView => ({
   name: detail.person.name_local === '' ? detail.person.name : detail.person.name_local,

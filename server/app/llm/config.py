@@ -28,7 +28,9 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "deepseek-flash"
-DEFAULT_TIMEOUT_SECONDS = 30
+DEFAULT_TIMEOUT_SECONDS = 60
+# 60 而不是 30：智能发现分批提炼的输入是 66KB 级（16 页 × 260 字），
+# 实测 30s 档超时率高到让整场发现空手而归；轻调用用不到超时，不受影响。
 # 4096 而不是更省的值：max_tokens 是**上限不是目标**，正常输出用不到它，
 # 只有 JSON 被截断时才会触顶。实测过一次长画像触发 2000 截断导致整批标准降级，
 # 而截断的代价（标准质量下滑且静默）远大于把上限留宽一点。

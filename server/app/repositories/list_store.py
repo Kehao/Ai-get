@@ -225,13 +225,21 @@ def _rebuild_row(mode: str, raw: dict) -> RowT | None:
 
 
 def _row_key(row: RowT) -> str:
-    """行的稳定键——与 targets.py 的 `_row_key` 同口径（复制以避免循环导入）。"""
-    return row.website if isinstance(row, TargetCompany) else row.source_url
+    """行的稳定键——必须与 targets.py 的 `_row_key` **逐字同口径**（复制以避免循环导入）。
+
+    空值退化到名称那一步不能省：多条没有域名的行共用空串键，会在 `state.records`
+    里互相覆盖，回查时拿到别家的记录。
+    """
+    if isinstance(row, TargetCompany):
+        return row.website.strip() or row.company_name.strip()
+    return row.source_url.strip() or row.name.strip()
 
 
 def _record_key(record) -> str:
     """记录的稳定键——与 targets.py 的 `_record_key` 同口径。"""
-    return record.domain if isinstance(record, CompanyRecord) else record.source_url
+    if isinstance(record, CompanyRecord):
+        return record.domain.strip() or record.name.strip()
+    return record.source_url.strip() or record.name.strip()
 
 
 def _seed_from(value: str) -> int:

@@ -1,0 +1,119 @@
+{
+  "name": "company_discovery",
+  "entity": "公司",
+  "budget": {
+    "max_entities": 3,
+    "max_pages": 6,
+    "max_gap_rounds": 1
+  },
+  "fields": [
+    {
+      "name": "domain",
+      "label": "官网",
+      "required": true,
+      "search_hint": "官网"
+    },
+    {
+      "name": "legal_name",
+      "label": "工商注册名",
+      "search_hint": "工商全称"
+    },
+    {
+      "name": "english_name",
+      "label": "英文名",
+      "search_hint": "英文名"
+    },
+    {
+      "name": "summary",
+      "label": "简介",
+      "required": true,
+      "search_hint": "公司简介"
+    },
+    {
+      "name": "industries",
+      "label": "行业",
+      "kind": "list",
+      "required": true,
+      "search_hint": "主营业务"
+    },
+    {
+      "name": "products",
+      "label": "主要产品",
+      "search_hint": "主要产品"
+    },
+    {
+      "name": "business_model",
+      "label": "商业模式",
+      "search_hint": "商业模式"
+    },
+    {
+      "name": "location",
+      "label": "地区",
+      "required": true,
+      "search_hint": "总部地址"
+    },
+    {
+      "name": "employees",
+      "label": "员工规模",
+      "required": true,
+      "search_hint": "公司规模"
+    },
+    {
+      "name": "founded",
+      "label": "成立时间",
+      "search_hint": "成立时间"
+    },
+    {
+      "name": "funding_stage",
+      "label": "融资阶段",
+      "required": true,
+      "search_hint": "融资"
+    },
+    {
+      "name": "latest_funding",
+      "label": "最近融资",
+      "search_hint": "最新融资"
+    },
+    {
+      "name": "investors",
+      "label": "投资方",
+      "search_hint": "投资方"
+    },
+    {
+      "name": "registered_capital",
+      "label": "注册资本",
+      "search_hint": "注册资本"
+    },
+    {
+      "name": "legal_rep",
+      "label": "法定代表人",
+      "search_hint": "法定代表人"
+    },
+    {
+      "name": "company_type",
+      "label": "企业类型",
+      "search_hint": "企业类型"
+    },
+    {
+      "name": "business_status",
+      "label": "经营状态",
+      "search_hint": "经营状态"
+    },
+    {
+      "name": "registered_address",
+      "label": "注册地址",
+      "search_hint": "注册地址"
+    },
+    {
+      "name": "official_contact",
+      "label": "官网联系方式",
+      "search_hint": "联系方式"
+    },
+    {
+      "name": "recent_activity",
+      "label": "近期活动或新闻",
+      "required": true,
+      "search_hint": "最新动态"
+    }
+  ]
+}

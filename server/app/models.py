@@ -173,6 +173,16 @@ class TargetCompany(BaseModel):
     created_at: datetime
     custom_values: dict[str, str] = Field(default_factory=dict)
     score: int = 0
+    # 深挖（爬虫 + LLM 补全档案）的状态与结论。默认 `blocked`＝还没挖过：
+    # 要和「字段为空」区分开——空是「没挖」还是「挖过但没有」，前端得说得清。
+    dossier_state: FieldState = "blocked"
+    dossier_reason: str = ""
+    dossier_missing: list[str] = Field(default_factory=list)
+    # 智能发现挖出的、没有专属行字段的档案（工商照面 / 产品 / 融资明细…），
+    # 键＝字段表里的名字。带默认值，旧记录从 SQLite 水合时自动兼容。
+    agent_fields: dict[str, str] = Field(default_factory=dict)
+    # 企业 logo 图地址。深挖时由抓取层直取官网图标（非 LLM 产出），空＝没挖过或没抓到。
+    logo_url: str = ""
 
 
 class TargetPerson(BaseModel):
@@ -373,6 +383,17 @@ class TargetPersonDetail(BaseModel):
 class CreateOutreachRequest(BaseModel):
     agent_name: str = Field(default="REVOR 默认销售智能体", max_length=60)
     channel: str = Field(default="邮件", max_length=20)
+
+
+class AgentDiscoverRequest(BaseModel):
+    """「智能发现」的入参：一句画像 + 期望结果数量。
+
+    `count` 来自前端「结果数量」选择框（0＝不指定，走 agent 配置默认）。
+    它折算成第一步的检索条数与提炼轮数——不是硬性承诺，最终以实际行数为准。
+    """
+
+    profile: str = Field(min_length=2, max_length=500)
+    count: int = Field(default=0, ge=0)
 
 
 class UpdateConditionsRequest(BaseModel):
