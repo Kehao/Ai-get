@@ -116,27 +116,6 @@ npm run dev
 
 **演示账号**：`admin@admin.com` / `admin123`
 
-## 部署
-
-生产环境跑在两台阿里云 ECS 上（均 HTTPS，证书由 certbot 自动续期）：
-
-| 域名 | 机器 | 项目 | 形态 |
-| --- | --- | --- | --- |
-| `get.kehao.info` | i-bp10qalh50to546miwbf | **本项目（Ai-get）** | GitHub clone 到 `/opt/ai-get`；前端 node 构建 → `/var/www/ai-get-www`；后端 uv venv（Python 3.13）+ systemd `ai-get-api.service`（:8000）；nginx 80/443，`/api/` 反代后端（SSE 关缓冲） |
-| `agent.kehao.info` | i-bp1dmqyivuxuiaenul6v | DAgent | 前端 `/var/www/agent-www`，API 反代 127.0.0.1:8100（`dagent-api.service`），另有 MCP 服务 :9100 |
-| `hot.kehao.info` | 同上 | AI 新闻站（Hugo 产物） | 纯静态，80 跳 443 |
-| `www.kehao.info` | 同上 | 个人作品集（resume） | 纯静态 |
-
-**更新流程**（Ai-get）：本机 `git push` 后，在服务器执行：
-
-```bash
-/opt/ai-get/update.sh
-```
-
-脚本会：拉取最新代码（GitHub 连接失败自动重试 5 次，全败则保持线上版本不动）→
-安装前端依赖 → 构建前端 → 部署静态产物 → 重启后端 → 健康检查。
-nginx 配置在 `/etc/nginx/sites-available/`，各机备份在 `/root/nginx-backup-20260921/`。
-
 ## 配置
 
 所有配置走环境变量，来源统一是 `server/.env`（由 `app.config` 在导入时加载）。
