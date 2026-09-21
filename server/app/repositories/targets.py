@@ -283,7 +283,8 @@ class TargetListRepository:
             discovered_count=0,
             contact_count=0,
             condition_items=_conditions_from_criteria(criteria),
-            strategy_groups=[],
+            # 策略组与条件同源（都来自画像）：不生成的话详情页的「挖掘策略」卡永不显示
+            strategy_groups=build_strategy_groups(profile, "company"),
             follow_up_plan=None,
             created_at=now,
             updated_at=now,

@@ -60,6 +60,11 @@
   gap: @space-3;
   padding-top: @space-4;
   border-top: 1px solid @color-border;
+
+  // 附件靠左、提交按钮靠右——填满底栏，不再挤在左侧留一大片空白
+  > :last-child {
+    margin-left: auto;
+  }
 }
 
 .attachButton {

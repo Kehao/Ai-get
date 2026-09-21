@@ -1,4 +1,4 @@
-// 落地页布局：吸顶导航 + 页脚。主 CTA「雇用 REVOR」直接进入控制台主功能页。
+// 落地页布局：吸顶导航 + 页脚。主 CTA「雇用 Ai-get」直接进入控制台主功能页。
 
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { ChevronDown, Globe } from 'lucide-react';
@@ -90,7 +90,7 @@ const MarketingLayout = (): JSX.Element => {
             )}
 
             <Button variant="gradient" leadingIcon={<span aria-hidden>👋</span>} onClick={goConsole}>
-              雇用 REVOR
+              雇用 Ai-get
             </Button>
           </div>
         </div>

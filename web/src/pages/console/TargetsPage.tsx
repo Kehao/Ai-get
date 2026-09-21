@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bot, Building2, MoreHorizontal, Sparkles, Upload, User, Users } from 'lucide-react';
+import { Building2, MoreHorizontal, Sparkles, Upload, User, Users } from 'lucide-react';
 
 import * as targetsApi from '@/api/targets';
 import type { TargetList } from '@/api/types';
@@ -18,6 +18,9 @@ import { useAsync } from '@/hooks/useAsync';
 import { formatRelativeTime } from '@/utils/format';
 
 import styles from './TargetsPage.module.less';
+
+// 普通挖掘（按条数召回）入口开关：暂以智能发现为唯一主入口，恢复时置回 true
+const SHOW_STANDARD_MINING = false;
 
 const MODE_OPTIONS = [
   { value: 'company' as const, label: '找公司', icon: <Building2 size={14} /> },
@@ -212,27 +215,33 @@ const TargetsPage = (): JSX.Element => {
             />
 
             <div className={styles.composerActions}>
-              <span className={styles.countLabel}>结果数量</span>
-              <Dropdown
-                panelWidth={200}
-                items={countItems}
-                onSelect={(key) => setCount(Number(key))}
-                trigger={({ open }) => (
-                  <button type="button" className={[styles.countButton, open ? styles.countButtonOpen : ''].filter(Boolean).join(' ')}>
-                    <span>{count}</span>
-                    <span className={styles.countUnit}>条</span>
-                  </button>
-                )}
-              />
-              <Button
-                variant="primary"
-                disabled={query.trim().length < 4}
-                loading={submitting}
-                leadingIcon={<Sparkles size={15} />}
-                onClick={() => void handleSubmit()}
-              >
-                开始挖掘潜客
-              </Button>
+              {/* 普通挖掘入口（结果数量 + 开始挖掘潜客）暂时隐藏：智能发现为主入口。
+                  恢复时把 SHOW_STANDARD_MINING 置回 true 即可。 */}
+              {SHOW_STANDARD_MINING ? (
+                <>
+                  <span className={styles.countLabel}>结果数量</span>
+                  <Dropdown
+                    panelWidth={200}
+                    items={countItems}
+                    onSelect={(key) => setCount(Number(key))}
+                    trigger={({ open }) => (
+                      <button type="button" className={[styles.countButton, open ? styles.countButtonOpen : ''].filter(Boolean).join(' ')}>
+                        <span>{count}</span>
+                        <span className={styles.countUnit}>条</span>
+                      </button>
+                    )}
+                  />
+                  <Button
+                    variant="primary"
+                    disabled={query.trim().length < 4}
+                    loading={submitting}
+                    leadingIcon={<Sparkles size={15} />}
+                    onClick={() => void handleSubmit()}
+                  >
+                    开始挖掘潜客
+                  </Button>
+                </>
+              ) : null}
               <span className={styles.countLabel}>发现数量</span>
               <Dropdown
                 panelWidth={200}
@@ -246,8 +255,8 @@ const TargetsPage = (): JSX.Element => {
                 )}
               />
               <Button
-                variant="outline"
-                leadingIcon={<Bot size={15} />}
+                variant="primary"
+                leadingIcon={<Sparkles size={15} />}
                 disabled={query.trim().length < 4 || agentRunning}
                 loading={agentRunning}
                 onClick={() => void handleAgentDiscover()}

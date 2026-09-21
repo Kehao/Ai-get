@@ -381,7 +381,7 @@ class TargetPersonDetail(BaseModel):
 
 
 class CreateOutreachRequest(BaseModel):
-    agent_name: str = Field(default="REVOR 默认销售智能体", max_length=60)
+    agent_name: str = Field(default="Ai-get 默认销售智能体", max_length=60)
     channel: str = Field(default="邮件", max_length=20)
 
 

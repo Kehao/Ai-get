@@ -56,7 +56,7 @@ const AgentConfigPage = (): JSX.Element => {
 
   const openTemplateDraft = (template: AgentTemplate): void =>
     setDraft({
-      name: template.name.replace('REVOR', 'Ai-get'),
+      name: template.name,
       description: template.description,
       emoji: template.emoji,
       channels: [...template.channels],

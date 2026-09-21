@@ -118,7 +118,7 @@ const HomePage = (): JSX.Element => {
 
         <div className={styles.heroActions}>
           <Button variant="gradient" size="lg" onClick={goConsole} leadingIcon={<span aria-hidden>👋</span>}>
-            免费雇用 REVOR
+            免费雇用 Ai-get
           </Button>
           <a className={styles.ghostLink} href="#how">
             查看工作原理 ↓
@@ -193,7 +193,7 @@ const HomePage = (): JSX.Element => {
       <section className={styles.sectionAlt}>
         <header className={styles.sectionHeader}>
           <span className={styles.sectionEyebrow}>核心功能</span>
-          <h2 className={styles.sectionTitle}>REVOR 如何工作？</h2>
+          <h2 className={styles.sectionTitle}>Ai-get 如何工作？</h2>
           <p className={styles.sectionLead}>从目标市场到已预约会议，中间的工作交给你的 AI 销售智能体。</p>
         </header>
 

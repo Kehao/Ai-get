@@ -42,7 +42,7 @@ AGENT_TEMPLATES: tuple[AgentTemplate, ...] = (
     AgentTemplate(
         id="template-default",
         emoji="🧠",
-        name="REVOR 默认销售智能体",
+        name="Ai-get 默认销售智能体",
         badge="默认",
         status_label="已发布",
         description="覆盖所有渠道的标准 B2B 销售智能体，支持首轮破冰触达与自动回复。",

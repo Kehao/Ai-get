@@ -203,7 +203,7 @@ const TargetDetailPage = (): JSX.Element => {
   );
 
   const agentOptions = useMemo(() => agents.data ?? [], [agents.data]);
-  const defaultAgentName = agentOptions[0]?.name ?? 'REVOR 默认销售智能体';
+  const defaultAgentName = agentOptions[0]?.name ?? 'Ai-get 默认销售智能体';
 
   const activeSource = useMemo(
     () => (sources.data ?? []).find((item) => item.id === targetList?.source_id) ?? null,
