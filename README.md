@@ -16,7 +16,6 @@
 <p align="center">
   <a href="https://get.kehao.info">在线预览</a> ·
   <a href="#快速开始">快速开始</a> ·
-  <a href="#两种挖掘模式">两种挖掘模式</a> ·
   <a href="#架构与工作原理">架构与工作原理</a> ·
   <a href="#改成你自己的">改成你自己的</a> ·
   <a href="#部署">部署</a>
